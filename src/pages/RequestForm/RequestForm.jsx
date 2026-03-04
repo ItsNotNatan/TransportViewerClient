@@ -6,59 +6,73 @@ import './RequestForm.css'
 export default function RequestForm() {
   const [carregando, setCarregando] = useState(false);
   const [dataHoje, setDataHoje] = useState('');
-  const [dataLimite, setDataLimite] = useState('');
-  const [dataMinima, setDataMinima] = useState('');
 
   // ESTADOS DOS ENDEREÇOS (Coleta e Entrega)
   const [coleta, setColeta] = useState({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
   const [entrega, setEntrega] = useState({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
 
-  // FORMATO BRASILEIRO E LIMITES DE DATA
+  // ESTADOS DAS DATAS MANUAIS (Para forçar DD/MM/AAAA)
+  const [dataColeta, setDataColeta] = useState('');
+  const [dataEntrega, setDataEntrega] = useState('');
+
   useEffect(() => {
     const hoje = new Date();
     setDataHoje(hoje.toLocaleDateString('pt-BR')); 
-
-    const anoAtual = hoje.getFullYear();
-    const mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
-    const diaAtual = String(hoje.getDate()).padStart(2, '0');
-
-    setDataMinima(`${anoAtual}-${mesAtual}-${diaAtual}`);
-    setDataLimite(`${anoAtual + 10}-12-31`);
   }, []);
 
-  // FUNÇÃO MÁGICA QUE BUSCA O CEP NA API VIACEP
+  // MÁSCARA INTELIGENTE PARA FORÇAR DD/MM/AAAA NAS DATAS DE COLETA E ENTREga
+  const aplicarMascaraData = (valor) => {
+    let v = valor.replace(/\D/g, ''); // Tira tudo que não for número
+    if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
+    if (v.length > 5) v = v.slice(0, 5) + '/' + v.slice(5, 9);
+    return v;
+  };
+
+  // FUNÇÃO MÁGICA QUE BUSCA O CEP NA API VIACEP (COLETA E ENTREGA)
   const buscarCep = async (valorCep, tipo) => {
-    // Só números
     const cepLimpo = valorCep.replace(/\D/g, ''); 
     
-    // Atualiza o CEP digitado na tela
-    if (tipo === 'coleta') setColeta(prev => ({ ...prev, cep: valorCep }));
-    else setEntrega(prev => ({ ...prev, cep: valorCep }));
+    // Atualiza o que o usuário está digitando na tela
+    if (tipo === 'coleta') {
+      setColeta(prev => ({ ...prev, cep: valorCep }));
+    } else {
+      setEntrega(prev => ({ ...prev, cep: valorCep }));
+    }
 
-    // Se tiver 8 números, vai buscar na internet!
+    // Quando bater 8 números exatos, vai na internet buscar!
     if (cepLimpo.length === 8) {
       try {
         const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
         const data = await res.json();
         
-        if (!data.erro) {
-          if (tipo === 'coleta') {
-            setColeta(prev => ({ ...prev, logradouro: data.logradouro, bairro: data.bairro, localidade: data.localidade, uf: data.uf }));
-          } else {
-            setEntrega(prev => ({ ...prev, logradouro: data.logradouro, bairro: data.bairro, localidade: data.localidade, uf: data.uf }));
-          }
+        if (data.erro) {
+          alert(`O CEP ${valorCep} não foi encontrado. Por favor, verifique ou preencha manualmente.`);
+          return; 
+        }
+
+        // Se encontrou, preenche os campos automaticamente!
+        if (tipo === 'coleta') {
+          setColeta(prev => ({ 
+            ...prev, 
+            logradouro: data.logradouro || '', 
+            bairro: data.bairro || '', 
+            localidade: data.localidade || '', 
+            uf: data.uf || '' 
+          }));
+        } else if (tipo === 'entrega') {
+          setEntrega(prev => ({ 
+            ...prev, 
+            logradouro: data.logradouro || '', 
+            bairro: data.bairro || '', 
+            localidade: data.localidade || '', 
+            uf: data.uf || '' 
+          }));
         }
       } catch (error) {
-        console.error("Erro ao buscar o CEP");
+        console.error("Erro ao buscar o CEP:", error);
+        alert("Erro de conexão ao buscar o CEP. Preencha manualmente.");
       }
     }
-  };
-
-  // Função para converter data YYYY-MM-DD para DD/MM/AAAA antes de salvar no banco
-  const formatarDataParaBR = (dataYMD) => {
-    if (!dataYMD) return '';
-    const [ano, mes, dia] = dataYMD.split('-');
-    return `${dia}/${mes}/${ano}`;
   };
 
   const handleSubmit = async (e) => {
@@ -70,11 +84,7 @@ export default function RequestForm() {
     
     dados.dataSolicitacao = dataHoje; 
     
-    // Convertendo as datas escolhidas no calendário para o padrão BR
-    dados.dataColeta = formatarDataParaBR(dados.dataColetaCalendario);
-    dados.dataEntrega = formatarDataParaBR(dados.dataEntregaCalendario);
-
-    // Juntando os endereços para salvar certinho no banco de dados!
+    // Juntando os endereços para salvar certinho no banco de dados
     dados.coleta = `${dados.logradouroColeta}, ${dados.numeroColeta || 'S/N'} - ${dados.bairroColeta}, ${dados.cidadeColeta} - ${dados.ufColeta} (CEP: ${dados.cepColeta})`;
     dados.entrega = `${dados.logradouroEntrega}, ${dados.numeroEntrega || 'S/N'} - ${dados.bairroEntrega}, ${dados.cidadeEntrega} - ${dados.ufEntrega} (CEP: ${dados.cepEntrega})`;
 
@@ -90,9 +100,12 @@ export default function RequestForm() {
       if (resposta.ok) {
         alert(`Sucesso! Transporte solicitado! (ID: ${resultado.id_gerado})`);
         e.target.reset(); 
-        // Limpa os ceps da tela também
+        
+        // Limpa a tela após enviar
         setColeta({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
         setEntrega({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
+        setDataColeta('');
+        setDataEntrega('');
       } else {
         alert("Erro ao enviar a solicitação.");
       }
@@ -165,13 +178,24 @@ export default function RequestForm() {
                 </div>
                 <div className="input-group">
                   <label>Data Desejada Coleta *</label>
-                  <input type="date" name="dataColetaCalendario" min={dataMinima} max={dataLimite} required className="input-control" />
+                  {/* MÁSCARA APLICADA NA COLETA */}
+                  <input 
+                    type="text" 
+                    name="dataColeta" 
+                    value={dataColeta} 
+                    onChange={(e) => setDataColeta(aplicarMascaraData(e.target.value))} 
+                    placeholder="DD/MM/AAAA" 
+                    maxLength="10" 
+                    required 
+                    className="input-control" 
+                  />
                 </div>
               </div>
 
               <div className="form-grid-4">
                 <div className="input-group">
                   <label>CEP (Apenas números)</label>
+                  {/* CHAMANDO BUSCA CEP: COLETA */}
                   <input type="text" name="cepColeta" maxLength="9" value={coleta.cep} onChange={(e) => buscarCep(e.target.value, 'coleta')} className="input-control" placeholder="00000000" />
                 </div>
                 <div className="input-group" style={{ gridColumn: 'span 2' }}>
@@ -211,13 +235,24 @@ export default function RequestForm() {
                 </div>
                 <div className="input-group">
                   <label>Data Desejada Entrega *</label>
-                  <input type="date" name="dataEntregaCalendario" min={dataMinima} max={dataLimite} required className="input-control" />
+                  {/* MÁSCARA APLICADA NA ENTREGA */}
+                  <input 
+                    type="text" 
+                    name="dataEntrega" 
+                    value={dataEntrega} 
+                    onChange={(e) => setDataEntrega(aplicarMascaraData(e.target.value))} 
+                    placeholder="DD/MM/AAAA" 
+                    maxLength="10" 
+                    required 
+                    className="input-control" 
+                  />
                 </div>
               </div>
 
               <div className="form-grid-4">
                 <div className="input-group">
                   <label>CEP (Apenas números)</label>
+                  {/* CHAMANDO BUSCA CEP: ENTREGA */}
                   <input type="text" name="cepEntrega" maxLength="9" value={entrega.cep} onChange={(e) => buscarCep(e.target.value, 'entrega')} className="input-control" placeholder="00000000" />
                 </div>
                 <div className="input-group" style={{ gridColumn: 'span 2' }}>
