@@ -51,8 +51,6 @@ export default function RequestForm() {
     const formData = new FormData(e.target);
     const dados = Object.fromEntries(formData.entries());
     dados.dataSolicitacao = dataHoje; 
-    dados.coleta = `${dados.logradouroColeta}, ${dados.numeroColeta || 'S/N'} - ${dados.bairroColeta}, ${dados.cidadeColeta} - ${dados.ufColeta} (CEP: ${dados.cepColeta})`;
-    dados.entrega = `${dados.logradouroEntrega}, ${dados.numeroEntrega || 'S/N'} - ${dados.bairroEntrega}, ${dados.cidadeEntrega} - ${dados.ufEntrega} (CEP: ${dados.cepEntrega})`;
 
     try {
       const resposta = await fetch('http://localhost:3000/api/transportes', {
@@ -60,7 +58,9 @@ export default function RequestForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dados),
       });
+      
       const resultado = await resposta.json();
+      
       if (resposta.ok) {
         alert(`Sucesso! Transporte solicitado! (ID: ${resultado.id_gerado})`);
         e.target.reset(); 
@@ -69,10 +69,10 @@ export default function RequestForm() {
         setDataColeta('');
         setDataEntrega('');
       } else {
-        alert("Erro ao enviar a solicitação.");
+        alert("ERRO DO SERVIDOR: \n\n" + JSON.stringify(resultado, null, 2));
       }
     } catch (erro) {
-      alert("Erro de conexão. O servidor Node.js está ligado?");
+      alert("ERRO DE CONEXÃO/REACT: \n\n" + erro.message);
     } finally {
       setCarregando(false);
     }
@@ -99,12 +99,14 @@ export default function RequestForm() {
             <input type="text" value={dataHoje} readOnly className="input-control" />
           </div>
           <div className="input-group">
-            <label>Nº do Pedido</label>
-            <input type="text" readOnly className="input-control" placeholder="Gerado automaticamente" />
+            {/* Alterado para preenchimento manual */}
+            <label>Nº do Pedido *</label>
+            <input type="text" name="pedidoCompra" required className="input-control" placeholder="Digite o nº do pedido" />
           </div>
           <div className="input-group">
-            <label>WBS / Centro de Custo</label>
-            <input type="text" disabled value="Preenchido pelo Admin" className="input-control" style={{ color: '#ef4444', fontWeight: 'bold' }} />
+            {/* Alterado para preenchimento manual */}
+            <label>WBS / Centro de Custo *</label>
+            <input type="text" name="wbs" required className="input-control" placeholder="Digite o WBS" />
           </div>
         </div>
 
@@ -202,9 +204,12 @@ export default function RequestForm() {
           <div className="input-group"><label>Volume (m³) *</label><input type="number" name="volume" step="0.01" min="0" required className="input-control" /></div>
           <div className="input-group"><label>Medidas (C x L x A)</label><input type="text" name="medidas" placeholder="Ex: 2m x 1m x 1.5m" className="input-control" /></div>
           <div className="input-group">
-            <label>Veículo *</label>
+            <label>Modal / Veículo *</label>
             <select name="veiculo" required className="input-control">
               <option value="">Selecione...</option>
+              {/* Opções de Modal adicionadas */}
+              <option value="TERRESTRE">TERRESTRE</option>
+              <option value="AÉREO">AÉREO</option>
               <option value="VAN">VAN</option>
               <option value="TRUCK">TRUCK</option>
               <option value="CARRETA">CARRETA</option>
@@ -216,7 +221,7 @@ export default function RequestForm() {
               <option value="">Selecione...</option>
               <option value="Dedicado">Dedicado</option>
               <option value="Fracionado">Fracionado</option>
-              <option value="REDESPACHO/FRACIONADO">REDESPACHO/FRACIONADO</option> {/* OPÇÃO ADICIONADA AQUI */}
+              <option value="REDESPACHO/FRACIONADO">REDESPACHO/FRACIONADO</option>
             </select>
           </div>
           <div className="input-group"><label>Nota Fiscal</label><input type="text" name="nf" className="input-control" placeholder="Opcional" /></div>
