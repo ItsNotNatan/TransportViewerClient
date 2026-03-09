@@ -55,7 +55,14 @@ export default function TrackOrder() {
   const formatarData = (dataStr) => {
     if (!dataStr) return 'Não informada';
     const partes = dataStr.split('-');
-    return `${partes[2]}/${partes[1]}/${partes[0]}`; // Transforma 2026-03-10 em 10/03/2026
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`; // Transforma 2026-03-10 em 10/03/2026
+    return dataStr;
+  };
+
+  // Função para formatar o valor como Moeda Brasileira (Reais)
+  const formatarValor = (valor) => {
+    if (!valor || isNaN(valor)) return 'Sob Consulta';
+    return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   // Lógica inteligente da Linha do Tempo (Timeline)
@@ -114,11 +121,14 @@ export default function TrackOrder() {
             </span>
           </div>
           
-          <div className="track-info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem', backgroundColor: '#f9fafb', padding: '1.5rem', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
+          {/* Mudei gridTemplateColumns para 5 para caber a nova coluna de Valor */}
+          <div className="track-info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '2rem', backgroundColor: '#f9fafb', padding: '1.5rem', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Origem</span><strong>{resultado.origem?.municipio} - {resultado.origem?.uf}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Destino</span><strong>{resultado.destino?.municipio} - {resultado.destino?.uf}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Previsão</span><strong>{formatarData(resultado.data_entrega)}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Veículo</span><strong>{resultado.veiculo}</strong></div>
+            {/* 👇 NOVA COLUNA DO VALOR DO FRETE AQUI 👇 */}
+            <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Valor do Frete</span><strong style={{ color: '#16a34a' }}>{formatarValor(resultado.valor_nf || resultado.cotacao_bid)}</strong></div>
           </div>
           
           <div className="timeline-container">
