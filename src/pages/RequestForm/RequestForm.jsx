@@ -11,18 +11,18 @@ export default function RequestForm() {
 
   useEffect(() => {
     const hoje = new Date();
-    setDataHoje(hoje.toLocaleDateString('pt-BR')); 
+    setDataHoje(hoje.toLocaleDateString('pt-BR'));
   }, []);
 
   const aplicarMascaraData = (valor) => {
-    let v = valor.replace(/\D/g, ''); 
+    let v = valor.replace(/\D/g, '');
     if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
     if (v.length > 5) v = v.slice(0, 5) + '/' + v.slice(5, 9);
     return v;
   };
 
   const buscarCep = async (valorCep, tipo) => {
-    const cepLimpo = valorCep.replace(/\D/g, ''); 
+    const cepLimpo = valorCep.replace(/\D/g, '');
     if (tipo === 'coleta') setColeta(prev => ({ ...prev, cep: valorCep }));
     else setEntrega(prev => ({ ...prev, cep: valorCep }));
 
@@ -32,7 +32,7 @@ export default function RequestForm() {
         const data = await res.json();
         if (data.erro) {
           alert(`O CEP ${valorCep} não foi encontrado. Por favor, verifique ou preencha manualmente.`);
-          return; 
+          return;
         }
         if (tipo === 'coleta') {
           setColeta(prev => ({ ...prev, logradouro: data.logradouro || '', bairro: data.bairro || '', localidade: data.localidade || '', uf: data.uf || '' }));
@@ -50,20 +50,23 @@ export default function RequestForm() {
     setCarregando(true);
     const formData = new FormData(e.target);
     const dados = Object.fromEntries(formData.entries());
-    dados.dataSolicitacao = dataHoje; 
+    dados.dataSolicitacao = dataHoje;
 
     try {
-      const resposta = await fetch('http://localhost:3000/api/transportes', {
+      // 🚀 AQUI ESTÁ A CORREÇÃO: Porta 3001 e enviando a variável "dados"
+      const resposta = await fetch('http://localhost:3001/api/transportes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dados), 
       });
-      
+
       const resultado = await resposta.json();
-      
+
       if (resposta.ok) {
         alert(`Sucesso! Transporte solicitado! (ID: ${resultado.id_gerado})`);
-        e.target.reset(); 
+        e.target.reset();
         setColeta({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
         setEntrega({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
         setDataColeta('');
@@ -84,9 +87,9 @@ export default function RequestForm() {
         <h3 className="card-title">Solicitação de Transporte</h3>
         <div className="badge-info"><i className="fa-solid fa-clock"></i> Preencha os dados</div>
       </div>
-      
+
       <form onSubmit={handleSubmit}>
-        
+
         {/* SEÇÃO 1: DADOS BÁSICOS */}
         <h4 className="section-title"><i className="fa-solid fa-user-tag"></i> Dados do Solicitante</h4>
         <div className="form-grid-4">
@@ -99,12 +102,10 @@ export default function RequestForm() {
             <input type="text" value={dataHoje} readOnly className="input-control" />
           </div>
           <div className="input-group">
-            {/* Alterado para preenchimento manual */}
             <label>Nº do Pedido *</label>
             <input type="text" name="pedidoCompra" required className="input-control" placeholder="Digite o nº do pedido" />
           </div>
           <div className="input-group">
-            {/* Alterado para preenchimento manual */}
             <label>WBS / Centro de Custo *</label>
             <input type="text" name="wbs" required className="input-control" placeholder="Digite o WBS" />
           </div>
@@ -131,7 +132,7 @@ export default function RequestForm() {
             </div>
             <div className="input-group" style={{ gridColumn: 'span 2' }}>
               <label>Logradouro (Rua/Av) *</label>
-              <input type="text" name="logradouroColeta" required value={coleta.logradouro} onChange={(e) => setColeta({...coleta, logradouro: e.target.value})} className="input-control" />
+              <input type="text" name="logradouroColeta" required value={coleta.logradouro} onChange={(e) => setColeta({ ...coleta, logradouro: e.target.value })} className="input-control" />
             </div>
             <div className="input-group">
               <label>Número / Compl.</label>
@@ -141,15 +142,15 @@ export default function RequestForm() {
           <div className="form-grid-3">
             <div className="input-group">
               <label>Bairro *</label>
-              <input type="text" name="bairroColeta" required value={coleta.bairro} onChange={(e) => setColeta({...coleta, bairro: e.target.value})} className="input-control" />
+              <input type="text" name="bairroColeta" required value={coleta.bairro} onChange={(e) => setColeta({ ...coleta, bairro: e.target.value })} className="input-control" />
             </div>
             <div className="input-group">
               <label>Cidade *</label>
-              <input type="text" name="cidadeColeta" required value={coleta.localidade} onChange={(e) => setColeta({...coleta, localidade: e.target.value})} className="input-control" />
+              <input type="text" name="cidadeColeta" required value={coleta.localidade} onChange={(e) => setColeta({ ...coleta, localidade: e.target.value })} className="input-control" />
             </div>
             <div className="input-group">
               <label>UF *</label>
-              <input type="text" name="ufColeta" maxLength="2" required value={coleta.uf} onChange={(e) => setColeta({...coleta, uf: e.target.value})} className="input-control" />
+              <input type="text" name="ufColeta" maxLength="2" required value={coleta.uf} onChange={(e) => setColeta({ ...coleta, uf: e.target.value })} className="input-control" />
             </div>
           </div>
         </div>
@@ -174,7 +175,7 @@ export default function RequestForm() {
             </div>
             <div className="input-group" style={{ gridColumn: 'span 2' }}>
               <label>Logradouro (Rua/Av) *</label>
-              <input type="text" name="logradouroEntrega" required value={entrega.logradouro} onChange={(e) => setEntrega({...entrega, logradouro: e.target.value})} className="input-control" />
+              <input type="text" name="logradouroEntrega" required value={entrega.logradouro} onChange={(e) => setEntrega({ ...entrega, logradouro: e.target.value })} className="input-control" />
             </div>
             <div className="input-group">
               <label>Número / Compl.</label>
@@ -184,15 +185,15 @@ export default function RequestForm() {
           <div className="form-grid-3">
             <div className="input-group">
               <label>Bairro *</label>
-              <input type="text" name="bairroEntrega" required value={entrega.bairro} onChange={(e) => setEntrega({...entrega, bairro: e.target.value})} className="input-control" />
+              <input type="text" name="bairroEntrega" required value={entrega.bairro} onChange={(e) => setEntrega({ ...entrega, bairro: e.target.value })} className="input-control" />
             </div>
             <div className="input-group">
               <label>Cidade *</label>
-              <input type="text" name="cidadeEntrega" required value={entrega.localidade} onChange={(e) => setEntrega({...entrega, localidade: e.target.value})} className="input-control" />
+              <input type="text" name="cidadeEntrega" required value={entrega.localidade} onChange={(e) => setEntrega({ ...entrega, localidade: e.target.value })} className="input-control" />
             </div>
             <div className="input-group">
               <label>UF *</label>
-              <input type="text" name="ufEntrega" maxLength="2" required value={entrega.uf} onChange={(e) => setEntrega({...entrega, uf: e.target.value})} className="input-control" />
+              <input type="text" name="ufEntrega" maxLength="2" required value={entrega.uf} onChange={(e) => setEntrega({ ...entrega, uf: e.target.value })} className="input-control" />
             </div>
           </div>
         </div>
@@ -207,7 +208,6 @@ export default function RequestForm() {
             <label>Modal / Veículo *</label>
             <select name="veiculo" required className="input-control">
               <option value="">Selecione...</option>
-              {/* Opções de Modal adicionadas */}
               <option value="TERRESTRE">TERRESTRE</option>
               <option value="AÉREO">AÉREO</option>
               <option value="VAN">VAN</option>

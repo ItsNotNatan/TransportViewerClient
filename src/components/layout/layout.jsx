@@ -1,4 +1,4 @@
-// src/components/Layout.jsx
+// src/components/layout/layout.jsx (ou o caminho onde ele estiver)
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
@@ -7,7 +7,6 @@ export default function Layout() {
     <div className="app-layout">
       
       {/* A MOLDURA: O CABEÇALHO FIXO */}
-      {/* Adicionamos um estilo de Grid aqui para forçar a centralização perfeita */}
       <header className="app-header" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
         
         {/* 1. Lado Esquerdo: A Logo */}
@@ -18,9 +17,11 @@ export default function Layout() {
         </div>
         
         {/* 2. Meio: A Navegação Centralizada */}
-        <nav className="nav-links" style={{ justifySelf: 'center' }}>
+        <nav className="nav-links" style={{ justifySelf: 'center', display: 'flex', gap: '1rem' }}>
           <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Solicitar Transporte</NavLink>
           <NavLink to="/rastreio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Rastrear Carga</NavLink>
+          {/* 👇 NOVA ABA DO DASHBOARD AQUI 👇 */}
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Dashboard</NavLink>
         </nav>
 
         {/* 3. Lado Direito: Uma div vazia apenas para manter o equilíbrio do Grid */}

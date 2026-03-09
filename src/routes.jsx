@@ -1,16 +1,21 @@
 // src/routes.jsx
 import { createBrowserRouter } from 'react-router-dom';
-import Layout from './components/layout/layout'; // Importando a nossa Moldura
+import Layout from './components/layout/layout'; 
 import RequestForm from './pages/RequestForm/RequestForm';
 import TrackOrder from './pages/TrackOrder/TrackOrder';
+
+// 👇 IMPORTAÇÃO DA NOVA TELA DO CLIENTE (Verifique se o caminho bate com o seu!) 👇
+import Dashboard from './pages/Dashboard/Dashboard'; 
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout />, // O Elemento principal é o Layout
+    element: <Layout />, 
     children: [
-      { path: "/", element: <RequestForm /> }, // A Foto 1
-      { path: "/rastreio", element: <TrackOrder /> } // A Foto 2
+      { path: "/", element: <RequestForm /> }, 
+      { path: "/rastreio", element: <TrackOrder /> },
+      // 👇 NOVA ROTA DO DASHBOARD AQUI 👇
+      { path: "/dashboard", element: <Dashboard /> } 
     ]
   }
 ]);
