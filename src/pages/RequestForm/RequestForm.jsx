@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './RequestForm.css';
+// Importando a lista do arquivo que acabamos de criar
+import { LISTA_VEICULOS } from './ListaVeiculos.js'; 
 
 export default function RequestForm() {
   const [carregando, setCarregando] = useState(false);
@@ -52,8 +54,10 @@ export default function RequestForm() {
     const dados = Object.fromEntries(formData.entries());
     dados.dataSolicitacao = dataHoje;
 
+    // Lógica do modal automático mantida intacta
+    dados.modal = dados.veiculo === 'AVIÃO' ? 'AÉREO' : 'TERRESTRE';
+
     try {
-      // 🚀 AQUI ESTÁ A CORREÇÃO: Porta 3001 e enviando a variável "dados"
       const resposta = await fetch('http://localhost:3001/api/transportes', {
         method: 'POST',
         headers: {
@@ -111,8 +115,10 @@ export default function RequestForm() {
           </div>
         </div>
 
-        {/* SEÇÃO 2: ROTA (ORIGEM) */}
+        {/* SEÇÃO 2: ROTA E PRAZOS (MANTIDA IGUAL) */}
         <h4 className="section-title"><i className="fa-solid fa-map-location-dot"></i> Rota e Prazos</h4>
+        
+        {/* Origem */}
         <div className="box-highlight" style={{ marginBottom: '1.5rem' }}>
           <h5 style={{ color: '#1e40af', fontWeight: 'bold', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.5rem' }}>1. Origem (Coleta)</h5>
           <div className="form-grid-2">
@@ -155,7 +161,7 @@ export default function RequestForm() {
           </div>
         </div>
 
-        {/* SEÇÃO 2: ROTA (DESTINO) */}
+        {/* Destino */}
         <div className="box-highlight" style={{ marginBottom: '1.5rem' }}>
           <h5 style={{ color: '#166534', fontWeight: 'bold', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.5rem' }}>2. Destino (Entrega)</h5>
           <div className="form-grid-2">
@@ -204,17 +210,20 @@ export default function RequestForm() {
           <div className="input-group"><label>Peso (kg) *</label><input type="number" name="peso" step="0.01" min="0" required className="input-control" /></div>
           <div className="input-group"><label>Volume (m³) *</label><input type="number" name="volume" step="0.01" min="0" required className="input-control" /></div>
           <div className="input-group"><label>Medidas (C x L x A)</label><input type="text" name="medidas" placeholder="Ex: 2m x 1m x 1.5m" className="input-control" /></div>
+          
+          {/* --- SELECT DINÂMICO AQUI --- */}
           <div className="input-group">
-            <label>Modal / Veículo *</label>
+            <label>Veículo *</label>
             <select name="veiculo" required className="input-control">
               <option value="">Selecione...</option>
-              <option value="TERRESTRE">TERRESTRE</option>
-              <option value="AÉREO">AÉREO</option>
-              <option value="VAN">VAN</option>
-              <option value="TRUCK">TRUCK</option>
-              <option value="CARRETA">CARRETA</option>
+              {LISTA_VEICULOS.map((veiculo, index) => (
+                <option key={index} value={veiculo}>
+                  {veiculo}
+                </option>
+              ))}
             </select>
           </div>
+          
           <div className="input-group">
             <label>Tipo de Frete *</label>
             <select name="frete" required className="input-control">
