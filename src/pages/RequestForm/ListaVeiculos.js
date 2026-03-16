@@ -1,5 +1,3 @@
-// veiculos.js
-
 export const LISTA_VEICULOS = [
   'FIORINO',
   'VAN',
