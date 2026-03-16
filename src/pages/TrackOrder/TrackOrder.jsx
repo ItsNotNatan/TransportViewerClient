@@ -127,8 +127,6 @@ export default function TrackOrder() {
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Destino</span><strong>{resultado.destino?.municipio} - {resultado.destino?.uf}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Previsão</span><strong>{formatarData(resultado.data_entrega)}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Veículo</span><strong>{resultado.veiculo}</strong></div>
-            {/* 👇 NOVA COLUNA DO VALOR DO FRETE AQUI 👇 */}
-            <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Valor do Frete</span><strong style={{ color: '#16a34a' }}>{formatarValor(resultado.valor_nf || resultado.cotacao_bid)}</strong></div>
           </div>
           
           <div className="timeline-container">

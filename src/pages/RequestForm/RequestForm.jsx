@@ -10,6 +10,9 @@ export default function RequestForm() {
   const [entrega, setEntrega] = useState({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
   const [dataColeta, setDataColeta] = useState('');
   const [dataEntrega, setDataEntrega] = useState('');
+  
+  // NOVO: Estado para controlar a máscara do telefone de contato
+  const [telefoneContato, setTelefoneContato] = useState('');
 
   useEffect(() => {
     const hoje = new Date();
@@ -20,6 +23,19 @@ export default function RequestForm() {
     let v = valor.replace(/\D/g, '');
     if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
     if (v.length > 5) v = v.slice(0, 5) + '/' + v.slice(5, 9);
+    return v;
+  };
+
+  // NOVO: Função para aplicar máscara de telefone (Fixo ou Celular)
+  const aplicarMascaraTelefone = (valor) => {
+    let v = valor.replace(/\D/g, '');
+    if (v.length <= 10) {
+      v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
+      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+    } else {
+      v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
+      v = v.replace(/(\d{5})(\d)/, '$1-$2');
+    }
     return v;
   };
 
@@ -75,6 +91,7 @@ export default function RequestForm() {
         setEntrega({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
         setDataColeta('');
         setDataEntrega('');
+        setTelefoneContato(''); // NOVO: Limpa o campo de telefone após o envio
       } else {
         alert("ERRO DO SERVIDOR: \n\n" + JSON.stringify(resultado, null, 2));
       }
@@ -115,8 +132,29 @@ export default function RequestForm() {
           </div>
         </div>
 
+        {/* NOVO: DADOS DE CONTATO */}
+        <div className="form-grid-2" style={{ marginTop: '1rem' }}>
+          <div className="input-group">
+            <label>Nome do Contato (Para alinhamentos) *</label>
+            <input type="text" name="nomeContato" required className="input-control" placeholder="Com quem a transportadora deve falar?" />
+          </div>
+          <div className="input-group">
+            <label>Telefone do Contato *</label>
+            <input 
+              type="tel" 
+              name="telefoneContato" 
+              value={telefoneContato} 
+              onChange={(e) => setTelefoneContato(aplicarMascaraTelefone(e.target.value))} 
+              maxLength="15" 
+              required 
+              className="input-control" 
+              placeholder="(00) 00000-0000" 
+            />
+          </div>
+        </div>
+
         {/* SEÇÃO 2: ROTA E PRAZOS (MANTIDA IGUAL) */}
-        <h4 className="section-title"><i className="fa-solid fa-map-location-dot"></i> Rota e Prazos</h4>
+        <h4 className="section-title" style={{ marginTop: '2rem' }}><i className="fa-solid fa-map-location-dot"></i> Rota e Prazos</h4>
         
         {/* Origem */}
         <div className="box-highlight" style={{ marginBottom: '1.5rem' }}>
@@ -211,7 +249,6 @@ export default function RequestForm() {
           <div className="input-group"><label>Volume (m³) *</label><input type="number" name="volume" step="0.01" min="0" required className="input-control" /></div>
           <div className="input-group"><label>Medidas (C x L x A)</label><input type="text" name="medidas" placeholder="Ex: 2m x 1m x 1.5m" className="input-control" /></div>
           
-          {/* --- SELECT DINÂMICO AQUI --- */}
           <div className="input-group">
             <label>Veículo *</label>
             <select name="veiculo" required className="input-control">
