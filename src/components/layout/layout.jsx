@@ -1,4 +1,4 @@
-// src/components/layout/layout.jsx (ou o caminho onde ele estiver)
+// src/components/layout/layout.jsx
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
@@ -20,8 +20,9 @@ export default function Layout() {
         <nav className="nav-links" style={{ justifySelf: 'center', display: 'flex', gap: '1rem' }}>
           <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Solicitar Transporte</NavLink>
           <NavLink to="/rastreio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Rastrear Carga</NavLink>
-          {/* 👇 NOVA ABA DO DASHBOARD AQUI 👇 */}
           <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Dashboard</NavLink>
+          {/* 👇 NOVA ABA DO FINANCEIRO AQUI 👇 */}
+          <NavLink to="/financeiro" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Acomp. Financeiro</NavLink>
         </nav>
 
         {/* 3. Lado Direito: Uma div vazia apenas para manter o equilíbrio do Grid */}
