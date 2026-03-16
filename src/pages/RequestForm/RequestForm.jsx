@@ -11,7 +11,7 @@ export default function RequestForm() {
   const [dataColeta, setDataColeta] = useState('');
   const [dataEntrega, setDataEntrega] = useState('');
   
-  // NOVO: Estado para controlar a máscara do telefone de contato
+  // Estado para controlar a máscara do telefone de contato
   const [telefoneContato, setTelefoneContato] = useState('');
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function RequestForm() {
     return v;
   };
 
-  // NOVO: Função para aplicar máscara de telefone (Fixo ou Celular)
+  // Função para aplicar máscara de telefone (Fixo ou Celular)
   const aplicarMascaraTelefone = (valor) => {
     let v = valor.replace(/\D/g, '');
     if (v.length <= 10) {
@@ -91,7 +91,7 @@ export default function RequestForm() {
         setEntrega({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
         setDataColeta('');
         setDataEntrega('');
-        setTelefoneContato(''); // NOVO: Limpa o campo de telefone após o envio
+        setTelefoneContato(''); 
       } else {
         alert("ERRO DO SERVIDOR: \n\n" + JSON.stringify(resultado, null, 2));
       }
@@ -132,11 +132,11 @@ export default function RequestForm() {
           </div>
         </div>
 
-        {/* NOVO: DADOS DE CONTATO */}
-        <div className="form-grid-2" style={{ marginTop: '1rem' }}>
+        {/* DADOS DE CONTATO E RESERVA (Atualizado) */}
+        <div className="form-grid-3" style={{ marginTop: '1rem' }}>
           <div className="input-group">
-            <label>Nome do Contato (Para alinhamentos) *</label>
-            <input type="text" name="nomeContato" required className="input-control" placeholder="Com quem a transportadora deve falar?" />
+            <label>Nome do Contato *</label>
+            <input type="text" name="nomeContato" required className="input-control" placeholder="Com quem falar?" />
           </div>
           <div className="input-group">
             <label>Telefone do Contato *</label>
@@ -151,9 +151,14 @@ export default function RequestForm() {
               placeholder="(00) 00000-0000" 
             />
           </div>
+          {/* 👇 NOVO CAMPO: Número Reserva 👇 */}
+          <div className="input-group">
+            <label>Número Reserva</label>
+            <input type="text" name="numeroReserva" className="input-control" placeholder="Nº da reserva (Opcional)" />
+          </div>
         </div>
 
-        {/* SEÇÃO 2: ROTA E PRAZOS (MANTIDA IGUAL) */}
+        {/* SEÇÃO 2: ROTA E PRAZOS */}
         <h4 className="section-title" style={{ marginTop: '2rem' }}><i className="fa-solid fa-map-location-dot"></i> Rota e Prazos</h4>
         
         {/* Origem */}
