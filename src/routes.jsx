@@ -3,7 +3,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import Layout from './components/layout/layout'; 
 import RequestForm from './pages/RequestForm/RequestForm';
 import TrackOrder from './pages/TrackOrder/TrackOrder';
-import Dashboard from './pages/Dashboard/Dashboard'; 
+import PainelAtm from './pages/PainelAtm/PainelAtm';
 
 // 👇 IMPORTAÇÃO DA NOVA TELA DO FINANCEIRO 👇
 import AcompFinan from './pages/AcompFinan/AcompFinan'; 
@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <RequestForm /> }, 
       { path: "/rastreio", element: <TrackOrder /> },
-      { path: "/dashboard", element: <Dashboard /> },
+      { path: "/painelatm", element: <PainelAtm /> },
       // 👇 NOVA ROTA DO FINANCEIRO AQUI 👇
       { path: "/financeiro", element: <AcompFinan /> }
     ]

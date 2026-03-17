@@ -20,7 +20,7 @@ export default function Layout() {
         <nav className="nav-links" style={{ justifySelf: 'center', display: 'flex', gap: '1rem' }}>
           <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Solicitar Transporte</NavLink>
           <NavLink to="/rastreio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Rastrear Carga</NavLink>
-          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Painel ATM</NavLink>
+          <NavLink to="/painelatm" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Painel ATM</NavLink>
           {/* 👇 NOVA ABA DO FINANCEIRO AQUI 👇 */}
           <NavLink to="/financeiro" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Acomp. Financeiro</NavLink>
         </nav>
