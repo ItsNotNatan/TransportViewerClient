@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import './Dashboard.css';
 
-import './Dashboard.css'
-
-// --- Ícones SVG embutidos (Repare que tirei o FileText do PDF!) ---
+// --- Ícones SVG embutidos ---
 const Search = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>;
 const TableList = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="3" x2="21" y1="15" y2="15"/><line x1="9" x2="9" y1="9" y2="21"/></svg>;
 const FolderOpen = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>;
@@ -14,9 +13,20 @@ export default function Dashboard() {
   const [atms, setAtms] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
+  // ==========================================
+  // ESTADOS DE PAGINAÇÃO
+  // ==========================================
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 20; // Mostra 20 itens por vez (pode alterar para 50 se preferir)
+
   useEffect(() => {
     buscarPedidos();
   }, []);
+
+  // Volta para a página 1 sempre que o usuário digitar algo na pesquisa
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [searchTerm]);
 
   const buscarPedidos = async () => {
     setCarregando(true);
@@ -31,10 +41,19 @@ export default function Dashboard() {
     }
   };
 
+  // 1. Filtra os dados normalmente
   const atmsFiltrados = atms.filter(atm => {
     const termo = searchTerm.toLowerCase();
     return (atm.pedido_compra?.toLowerCase().includes(termo) || atm.nf?.toLowerCase().includes(termo) || atm.wbs?.toLowerCase().includes(termo) || atm.id?.toLowerCase().includes(termo));
   });
+
+  // 2. Calcula a Paginação com base apenas nos itens já filtrados
+  const totalPaginas = Math.ceil(atmsFiltrados.length / itensPorPagina);
+  const indiceUltimoItem = paginaAtual * itensPorPagina;
+  const indicePrimeiroItem = indiceUltimoItem - itensPorPagina;
+  
+  // 3. Corta o array para mostrar APENAS os itens desta página
+  const atmsExibidos = atmsFiltrados.slice(indicePrimeiroItem, indiceUltimoItem);
 
   const getStatusClass = (status) => {
     if (status === 'Entregue') return 'badge-success';
@@ -67,7 +86,11 @@ export default function Dashboard() {
               <tr><th>ID ATM</th><th>Pedido</th><th>NF</th><th>WBS</th><th>Rota</th><th>Veículo</th><th>Status</th><th>Ações</th></tr>
             </thead>
             <tbody>
-              {carregando ? (<tr><td colSpan="8" className="text-center" style={{padding: '2rem'}}>Carregando...</td></tr>) : atmsFiltrados.length === 0 ? (<tr><td colSpan="8" className="text-center" style={{padding: '2rem'}}>Nenhum pedido encontrado.</td></tr>) : atmsFiltrados.map((atm) => (
+              {carregando ? (
+                <tr><td colSpan="8" className="text-center" style={{padding: '2rem'}}>Carregando...</td></tr>
+              ) : atmsExibidos.length === 0 ? (
+                <tr><td colSpan="8" className="text-center" style={{padding: '2rem'}}>Nenhum pedido encontrado.</td></tr>
+              ) : atmsExibidos.map((atm) => (
                 <tr key={atm.id}>
                   <td className="font-bold" title={atm.id}>#{shortId(atm.id)}</td>
                   <td>{atm.pedido_compra || '-'}</td><td>{atm.nf || '-'}</td><td>{atm.wbs || '-'}</td>
@@ -79,12 +102,41 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
+
+          {/* ========================================================
+              CONTROLES DE PAGINAÇÃO AQUI EMBAIXO DA TABELA
+              ======================================================== */}
+          {!carregando && totalPaginas > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                Mostrando <strong>{indicePrimeiroItem + 1}</strong> a <strong>{Math.min(indiceUltimoItem, atmsFiltrados.length)}</strong> de <strong>{atmsFiltrados.length}</strong> resultados
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => setPaginaAtual(prev => Math.max(prev - 1, 1))}
+                  disabled={paginaAtual === 1}
+                  style={{ padding: '0.375rem 0.75rem', border: '1px solid #d1d5db', backgroundColor: paginaAtual === 1 ? '#f3f4f6' : '#fff', color: paginaAtual === 1 ? '#9ca3af' : '#374151', borderRadius: '0.375rem', cursor: paginaAtual === 1 ? 'not-allowed' : 'pointer', fontWeight: '500' }}
+                >
+                  Anterior
+                </button>
+                <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', fontSize: '0.875rem', fontWeight: 'bold', color: '#111827' }}>
+                  Página {paginaAtual} de {totalPaginas}
+                </span>
+                <button 
+                  onClick={() => setPaginaAtual(prev => Math.min(prev + 1, totalPaginas))}
+                  disabled={paginaAtual === totalPaginas}
+                  style={{ padding: '0.375rem 0.75rem', border: '1px solid #d1d5db', backgroundColor: paginaAtual === totalPaginas ? '#f3f4f6' : '#fff', color: paginaAtual === totalPaginas ? '#9ca3af' : '#374151', borderRadius: '0.375rem', cursor: paginaAtual === totalPaginas ? 'not-allowed' : 'pointer', fontWeight: '500' }}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       </section>
 
-      {/* ========================================================
-          MODAL EXPANDIDO (SEM O BOTÃO DE GERAR PDF)
-          ======================================================== */}
+      {/* MODAL EXPANDIDO MANTIDO IGUAL */}
       {selectedAtm && (
         <div className="modal-overlay">
           <div className="modal-content fade-in" style={{ maxWidth: '850px' }}>
@@ -162,7 +214,6 @@ export default function Dashboard() {
             </div>
 
             <div className="modal-footer">
-              {/* NOTE: O botão "Gerar PDF Oficial" não existe mais aqui! */}
               <button className="btn-secondary" onClick={() => setSelectedAtm(null)}>Fechar</button>
             </div>
           </div>
