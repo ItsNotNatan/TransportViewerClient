@@ -1,16 +1,18 @@
 // src/pages/AcompFinan/AcompFinan.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import Select from 'react-select'; // <-- IMPORTAÇÃO DA COMBO BOX AQUI
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 
 const DollarSign = ({ size = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>;
-const SearchIcon = ({ size = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
 
 export default function AcompFinan() {
   const [atms, setAtms] = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [buscaPep, setBuscaPep] = useState(''); 
+  
+  // O estado agora guarda o objeto selecionado da Combo Box
+  const [pepSelecionado, setPepSelecionado] = useState(null); 
   const [pepAtivo, setPepAtivo] = useState(''); 
 
   // ==========================================
@@ -20,7 +22,6 @@ export default function AcompFinan() {
     const carregarDados = async () => {
       try {
         setCarregando(true);
-        // Chamada para a rota que criamos no backend
         const resposta = await fetch('http://localhost:3001/api/admin/transportes');
         const dados = await resposta.json();
         if (resposta.ok) {
@@ -35,18 +36,45 @@ export default function AcompFinan() {
     carregarDados();
   }, []);
 
+  // ==========================================
+  // 2. EXTRAÇÃO AUTOMÁTICA DAS OPÇÕES DE PEP
+  // ==========================================
+  const opcoesPep = useMemo(() => {
+    const pepsUnicos = new Set();
+    
+    atms.forEach(atm => {
+      // Pega o WBS da logística
+      if (atm.wbs) pepsUnicos.add(atm.wbs.toUpperCase().trim());
+      
+      // Pega o PEP do faturamento (se existir)
+      if (atm.faturamento?.elemento_pep_cc_wbs) {
+        pepsUnicos.add(atm.faturamento.elemento_pep_cc_wbs.toUpperCase().trim());
+      }
+    });
+
+    // Converte o Set (valores únicos) para o formato que o react-select exige
+    return Array.from(pepsUnicos)
+      .filter(pep => pep !== '') // Remove vazios
+      .sort() // Coloca em ordem alfabética
+      .map(pep => ({ value: pep, label: pep }));
+  }, [atms]);
+
+
   const handlePesquisar = (e) => {
     e.preventDefault();
-    setPepAtivo(buscaPep.trim().toUpperCase());
+    if (pepSelecionado) {
+      setPepAtivo(pepSelecionado.value);
+    } else {
+      setPepAtivo('');
+    }
   };
 
   // ==========================================
-  // 2. FILTRAGEM INTELIGENTE (LOGÍSTICA + FINANCEIRO)
+  // 3. FILTRAGEM INTELIGENTE (LOGÍSTICA + FINANCEIRO)
   // ==========================================
   const atmsDoPep = useMemo(() => {
     if (!pepAtivo) return [];
     return atms.filter(atm => {
-      // Verifica o PEP tanto na tabela de pedido quanto na de faturamento (se existir)
       const pepLogistica = (atm.wbs || '').toUpperCase();
       const pepFinanceiro = (atm.faturamento?.elemento_pep_cc_wbs || '').toUpperCase();
       
@@ -55,11 +83,10 @@ export default function AcompFinan() {
   }, [atms, pepAtivo]);
 
   // ==========================================
-  // 3. SOMA E GRÁFICO
+  // 4. SOMA E GRÁFICO
   // ==========================================
   const totalGasto = useMemo(() => {
     return atmsDoPep.reduce((acc, atm) => {
-      // Prioriza o valor do faturamento, se não houver, usa o valor_nf da logística
       const valor = Number(atm.faturamento?.valor) || Number(atm.valor_nf) || 0;
       return acc + valor;
     }, 0);
@@ -68,7 +95,6 @@ export default function AcompFinan() {
   const dadosGrafico = useMemo(() => {
     const mapa = {};
     atmsDoPep.forEach(atm => {
-      // Usa a data de solicitação como eixo do tempo
       const dataStr = atm.data_solicitacao;
       if (!dataStr) return;
       
@@ -93,6 +119,25 @@ export default function AcompFinan() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   };
 
+  // Estilo customizado para a Combo Box combinar com o design
+  const selectStyles = {
+    control: (base) => ({ 
+      ...base, 
+      padding: '0.4rem', 
+      borderRadius: '0.5rem', 
+      borderColor: '#d1d5db',
+      fontSize: '1rem',
+      boxShadow: 'none',
+      '&:hover': { borderColor: '#059669' }
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected ? '#059669' : state.isFocused ? '#ecfdf5' : 'white',
+      color: state.isSelected ? 'white' : '#111827',
+      cursor: 'pointer'
+    })
+  };
+
   return (
     <section className="fade-in" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -105,20 +150,36 @@ export default function AcompFinan() {
         </div>
       </div>
 
-      <form onSubmit={handlePesquisar} style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}>
-            <SearchIcon size={20} />
-          </div>
-          <input 
-            type="text" 
-            placeholder="Digite o código PEP ou WBS (Ex: 10025A)"
-            value={buscaPep}
-            onChange={(e) => setBuscaPep(e.target.value)}
-            style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', fontSize: '1rem', borderRadius: '0.5rem', border: '1px solid #d1d5db', outline: 'none' }}
+      <form onSubmit={handlePesquisar} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', alignItems: 'center' }}>
+        <div style={{ flex: 1 }}>
+          {/* 👇 COMBO BOX INTELIGENTE AQUI 👇 */}
+          <Select
+            options={opcoesPep}
+            value={pepSelecionado}
+            onChange={setPepSelecionado}
+            placeholder="Selecione ou digite o código PEP..."
+            isSearchable
+            isClearable
+            isDisabled={carregando}
+            styles={selectStyles}
+            noOptionsMessage={() => "Nenhum projeto encontrado"}
           />
         </div>
-        <button type="submit" disabled={carregando} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '0 2rem', borderRadius: '0.5rem', fontWeight: 'bold', cursor: 'pointer' }}>
+        <button 
+          type="submit" 
+          disabled={carregando || !pepSelecionado} 
+          style={{ 
+            backgroundColor: (!carregando && pepSelecionado) ? '#059669' : '#9ca3af', 
+            color: 'white', 
+            border: 'none', 
+            padding: '0 2rem', 
+            height: '48px', // Mesma altura aproximada do Select
+            borderRadius: '0.5rem', 
+            fontWeight: 'bold', 
+            cursor: (!carregando && pepSelecionado) ? 'pointer' : 'not-allowed',
+            transition: 'background-color 0.2s'
+          }}
+        >
           {carregando ? 'Carregando...' : 'Analisar Gastos'}
         </button>
       </form>
@@ -126,7 +187,7 @@ export default function AcompFinan() {
       {pepAtivo && atmsDoPep.length > 0 ? (
         <div className="fade-in">
           <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '6px solid #059669' }}>
-            <span style={{ fontSize: '1rem', color: '#6b7280', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Acumulado no PEP: {pepAtivo}</span>
+            <span style={{ fontSize: '1rem', color: '#6b7280', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Acumulado no PEP: <span style={{ color: '#111827' }}>{pepAtivo}</span></span>
             <span style={{ fontSize: '3.5rem', fontWeight: '900', color: '#059669', marginTop: '0.5rem' }}>{formatarMoeda(totalGasto)}</span>
           </div>
 
@@ -147,7 +208,7 @@ export default function AcompFinan() {
         </div>
       ) : pepAtivo && (
         <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '0.75rem' }}>
-          <p style={{ color: '#6b7280' }}>Nenhum dado encontrado para o PEP "{pepAtivo}".</p>
+          <p style={{ color: '#6b7280' }}>Nenhum dado financeiro encontrado para o PEP "{pepAtivo}".</p>
         </div>
       )}
     </section>
