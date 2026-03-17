@@ -17,7 +17,7 @@ export default function Dashboard() {
   // ESTADOS DE PAGINAÇÃO
   // ==========================================
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const itensPorPagina = 20; // Mostra 20 itens por vez (pode alterar para 50 se preferir)
+  const itensPorPagina = 20;
 
   useEffect(() => {
     buscarPedidos();
@@ -41,18 +41,14 @@ export default function Dashboard() {
     }
   };
 
-  // 1. Filtra os dados normalmente
   const atmsFiltrados = atms.filter(atm => {
     const termo = searchTerm.toLowerCase();
     return (atm.pedido_compra?.toLowerCase().includes(termo) || atm.nf?.toLowerCase().includes(termo) || atm.wbs?.toLowerCase().includes(termo) || atm.id?.toLowerCase().includes(termo));
   });
 
-  // 2. Calcula a Paginação com base apenas nos itens já filtrados
   const totalPaginas = Math.ceil(atmsFiltrados.length / itensPorPagina);
   const indiceUltimoItem = paginaAtual * itensPorPagina;
   const indicePrimeiroItem = indiceUltimoItem - itensPorPagina;
-  
-  // 3. Corta o array para mostrar APENAS os itens desta página
   const atmsExibidos = atmsFiltrados.slice(indicePrimeiroItem, indiceUltimoItem);
 
   const getStatusClass = (status) => {
@@ -80,34 +76,55 @@ export default function Dashboard() {
             <input type="text" placeholder="Buscar por ID, Pedido, NF..." className="search-input" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </div>
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr><th>ID ATM</th><th>Pedido</th><th>NF</th><th>WBS</th><th>Rota</th><th>Veículo</th><th>Status</th><th>Ações</th></tr>
+        
+        {/* 👇 CONTAINER DA TABELA COM ALTURA MAXIMA E SCROLL VERTICAL 👇 */}
+        <div className="table-container" style={{ overflowY: 'auto', maxHeight: '65vh', position: 'relative', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+          <table className="data-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
+            
+            {/* 👇 CABEÇALHO FIXO (STICKY) 👇 */}
+            <thead style={{ position: 'sticky', top: 0, zIndex: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <tr style={{ backgroundColor: '#f3f4f6' }}>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>ID ATM</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Pedido</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>NF</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>WBS</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Rota</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Veículo</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Status</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb', textAlign: 'center' }}>Ações</th>
+              </tr>
             </thead>
+            
             <tbody>
               {carregando ? (
-                <tr><td colSpan="8" className="text-center" style={{padding: '2rem'}}>Carregando...</td></tr>
+                <tr><td colSpan="8" className="text-center" style={{padding: '3rem'}}>Carregando seus pedidos...</td></tr>
               ) : atmsExibidos.length === 0 ? (
-                <tr><td colSpan="8" className="text-center" style={{padding: '2rem'}}>Nenhum pedido encontrado.</td></tr>
+                <tr><td colSpan="8" className="text-center" style={{padding: '3rem', color: '#6b7280'}}>Nenhum pedido encontrado.</td></tr>
               ) : atmsExibidos.map((atm) => (
-                <tr key={atm.id}>
+                <tr key={atm.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td className="font-bold" title={atm.id}>#{shortId(atm.id)}</td>
-                  <td>{atm.pedido_compra || '-'}</td><td>{atm.nf || '-'}</td><td>{atm.wbs || '-'}</td>
-                  <td>De: {atm.origem?.municipio} <br/>Para: {atm.destino?.municipio}</td>
+                  <td>{atm.pedido_compra || '-'}</td>
+                  <td>{atm.nf || '-'}</td>
+                  <td>{atm.wbs || '-'}</td>
+                  <td style={{ fontSize: '0.85rem', lineHeight: '1.3' }}>
+                    <span style={{color: '#6b7280'}}>De:</span> {atm.origem?.municipio} <br/>
+                    <span style={{color: '#6b7280'}}>Para:</span> {atm.destino?.municipio}
+                  </td>
                   <td>{atm.veiculo}</td>
                   <td><span className={`badge ${getStatusClass(atm.status)}`}>{atm.status}</span></td>
-                  <td><button className="btn-action" onClick={() => setSelectedAtm(atm)}><FolderOpen size={16} /> Detalhes</button></td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button className="btn-action" onClick={() => setSelectedAtm(atm)} style={{ padding: '6px 12px' }}>
+                      <FolderOpen size={16} /> Detalhes
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          {/* ========================================================
-              CONTROLES DE PAGINAÇÃO AQUI EMBAIXO DA TABELA
-              ======================================================== */}
+          {/* 👇 PAGINAÇÃO FIXA (STICKY) NO FUNDO DA TABELA 👇 */}
           {!carregando && totalPaginas > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+            <div style={{ position: 'sticky', bottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb', zIndex: 20 }}>
               <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                 Mostrando <strong>{indicePrimeiroItem + 1}</strong> a <strong>{Math.min(indiceUltimoItem, atmsFiltrados.length)}</strong> de <strong>{atmsFiltrados.length}</strong> resultados
               </span>
