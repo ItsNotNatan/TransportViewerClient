@@ -70,7 +70,7 @@ export default function PainelAtm() {
     <>
       <section className="fade-in section-dashboard">
         <div className="section-header">
-          <h3 className="section-title"><TableList size={24} className="text-primary" /></h3>
+          <h3 className="section-title"><TableList size={24} className="text-primary" /> Dashboard (Meus Pedidos)</h3>
           <div className="search-wrapper">
             <Search className="search-icon" size={18} />
             <input type="text" placeholder="Buscar por ID, Pedido, NF..." className="search-input" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
