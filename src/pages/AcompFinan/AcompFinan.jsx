@@ -2,30 +2,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Select from 'react-select'; 
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar, Legend, AreaChart, Area
 } from 'recharts';
+import api from '../../services/api'; 
 
+// --- Ícones ---
 const DollarSign = ({ size = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>;
+const TrendingUp = ({ size = 20 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>;
+
+const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function AcompFinan() {
   const [atms, setAtms] = useState([]);
   const [carregando, setCarregando] = useState(true);
-  
   const [pepSelecionado, setPepSelecionado] = useState(null); 
   const [pepAtivo, setPepAtivo] = useState(''); 
 
-  // ==========================================
-  // 1. BUSCA DE DADOS
-  // ==========================================
   useEffect(() => {
     const carregarDados = async () => {
       try {
         setCarregando(true);
-        const resposta = await fetch('http://localhost:3001/api/admin/transportes');
-        const dados = await resposta.json();
-        if (resposta.ok) {
-          setAtms(dados);
-        }
+        const resposta = await api.get('/admin/transportes');
+        setAtms(resposta.data);
       } catch (erro) {
         console.error("Erro ao buscar dados financeiros:", erro);
       } finally {
@@ -35,223 +34,226 @@ export default function AcompFinan() {
     carregarDados();
   }, []);
 
-  // ==========================================
-  // 2. EXTRAÇÃO DAS OPÇÕES DE PEP (CORRIGIDO)
-  // ==========================================
   const opcoesPep = useMemo(() => {
     const pepsUnicos = new Set();
-    
     atms.forEach(atm => {
-      // Pega o WBS da logística
       if (atm.wbs) pepsUnicos.add(atm.wbs.toUpperCase().trim());
-      
-      // Pega o PEP do faturamento (Corrigido para ler direto do objeto atm)
-      if (atm.elemento_pep_cc_wbs) {
-        pepsUnicos.add(atm.elemento_pep_cc_wbs.toUpperCase().trim());
-      }
+      if (atm.elemento_pep_cc_wbs) pepsUnicos.add(atm.elemento_pep_cc_wbs.toUpperCase().trim());
     });
-
-    return Array.from(pepsUnicos)
-      .filter(pep => pep !== '') 
-      .sort() 
-      .map(pep => ({ value: pep, label: pep }));
+    return Array.from(pepsUnicos).sort().map(pep => ({ value: pep, label: pep }));
   }, [atms]);
 
-  const handlePesquisar = (e) => {
-    e.preventDefault();
-    setPepAtivo(pepSelecionado ? pepSelecionado.value : '');
-  };
-
-  // ==========================================
-  // 3. FILTRAGEM INTELIGENTE (CORRIGIDO)
-  // ==========================================
   const atmsDoPep = useMemo(() => {
     if (!pepAtivo) return [];
     return atms.filter(atm => {
       const pepLogistica = (atm.wbs || '').toUpperCase();
       const pepFinanceiro = (atm.elemento_pep_cc_wbs || '').toUpperCase();
-      
       return pepLogistica.includes(pepAtivo) || pepFinanceiro.includes(pepAtivo);
     });
   }, [atms, pepAtivo]);
 
   // ==========================================
-  // 4. CÁLCULOS E GRÁFICOS (CORRIGIDO)
+  // LÓGICA DE CÁLCULOS AVANÇADOS
   // ==========================================
-  const totalGasto = useMemo(() => {
-    return atmsDoPep.reduce((acc, atm) => {
-      // Pega o valor do faturamento, se não tiver, tenta o da NF
-      const valor = Number(atm.valor) || Number(atm.valor_nf) || 0;
-      return acc + valor;
-    }, 0);
-  }, [atmsDoPep]);
+  const stats = useMemo(() => {
+    if (atmsDoPep.length === 0) return null;
 
-  const dadosGrafico = useMemo(() => {
-    const mapa = {};
+    const total = atmsDoPep.reduce((acc, atm) => acc + (Number(atm.valor) || Number(atm.valor_nf) || 0), 0);
+    const media = total / atmsDoPep.length;
+
+    // Distribuição por Modal
+    const modalMap = {};
+    const transportadoraMap = {};
+
     atmsDoPep.forEach(atm => {
-      const dataStr = atm.data_solicitacao || atm.created_at;
-      if (!dataStr) return;
-      
-      const data = dataStr.split('T')[0]; 
+      const modal = atm.modal || 'TERRESTRE';
       const valor = Number(atm.valor) || Number(atm.valor_nf) || 0;
-      
-      if (valor > 0) {
-        mapa[data] = (mapa[data] || 0) + valor;
-      }
+      modalMap[modal] = (modalMap[modal] || 0) + valor;
+
+      const trans = atm.transportadora?.nome || 'A Definir';
+      transportadoraMap[trans] = (transportadoraMap[trans] || 0) + valor;
     });
 
-    return Object.keys(mapa).sort().map(data => {
-      const [ano, mes, dia] = data.split('-');
+    const modalData = Object.keys(modalMap).map(key => ({ name: key, value: modalMap[key] }));
+    const transData = Object.keys(transportadoraMap)
+      .map(key => ({ name: key, valor: transportadoraMap[key] }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 5);
+
+    return { total, media, modalData, transData };
+  }, [atmsDoPep]);
+
+  const dadosGraficoTempo = useMemo(() => {
+    const mapa = {};
+    let acumulado = 0;
+    
+    const ordenados = [...atmsDoPep].sort((a, b) => 
+      new Date(a.data_solicitacao || a.created_at) - new Date(b.data_solicitacao || b.created_at)
+    );
+
+    return ordenados.map(atm => {
+      const valor = Number(atm.valor) || Number(atm.valor_nf) || 0;
+      acumulado += valor;
+      const dataStr = (atm.data_solicitacao || atm.created_at).split('T')[0];
+      const [ano, mes, dia] = dataStr.split('-');
+      
       return {
-        dataExibicao: `${dia}/${mes}`,
-        gasto: mapa[data]
+        data: `${dia}/${mes}`,
+        gasto: valor,
+        acumulado: acumulado
       };
     });
   }, [atmsDoPep]);
 
-  // Utilitários de formatação
-  const formatarMoeda = (valor) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-  };
-
-  const shortId = (id) => id ? id.substring(0, 8).toUpperCase() : 'N/A';
-
-  const formatarDataBR = (dataStr) => {
-    if (!dataStr) return '-';
-    const partes = dataStr.split('T')[0].split('-');
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
-  };
-
-  // Estilos do Select
-  const selectStyles = {
-    control: (base) => ({ 
-      ...base, padding: '0.4rem', borderRadius: '0.5rem', borderColor: '#d1d5db',
-      fontSize: '1rem', boxShadow: 'none', '&:hover': { borderColor: '#059669' }
-    }),
-    option: (base, state) => ({
-      ...base, backgroundColor: state.isSelected ? '#059669' : state.isFocused ? '#ecfdf5' : 'white',
-      color: state.isSelected ? 'white' : '#111827', cursor: 'pointer'
-    })
-  };
+  const formatarMoeda = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   return (
-    <section className="fade-in" style={{ padding: '2rem', maxWidth: '1100px', margin: '0 auto' }}>
+    <section className="fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', backgroundColor: '#f8fafc' }}>
       
-      {/* CABEÇALHO */}
-      <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ padding: '1rem', backgroundColor: '#ecfdf5', color: '#059669', borderRadius: '50%' }}>
-          <DollarSign size={32} />
-        </div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#111827' }}>Acompanhamento Financeiro</h2>
-          <p style={{ margin: 0, color: '#6b7280' }}>Analise os custos consolidados por Elemento PEP / WBS.</p>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ padding: '1rem', backgroundColor: '#059669', color: 'white', borderRadius: '12px' }}>
+            <DollarSign size={28} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#1e293b' }}>Business Intelligence Financeiro</h2>
+            <p style={{ margin: 0, color: '#64748b' }}>Análise detalhada do centro de custo {pepAtivo || '---'}</p>
+          </div>
         </div>
       </div>
 
-      {/* BARRA DE PESQUISA */}
-      <form onSubmit={handlePesquisar} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', alignItems: 'center' }}>
-        <div style={{ flex: 1 }}>
-          <Select
-            options={opcoesPep}
-            value={pepSelecionado}
-            onChange={setPepSelecionado}
-            placeholder="Selecione ou digite o código PEP..."
-            isSearchable
-            isClearable
-            isDisabled={carregando}
-            styles={selectStyles}
-            noOptionsMessage={() => "Nenhum projeto encontrado"}
-          />
-        </div>
-        <button 
-          type="submit" 
-          disabled={carregando || !pepSelecionado} 
-          style={{ 
-            backgroundColor: (!carregando && pepSelecionado) ? '#059669' : '#9ca3af', 
-            color: 'white', border: 'none', padding: '0 2rem', height: '48px', 
-            borderRadius: '0.5rem', fontWeight: 'bold', 
-            cursor: (!carregando && pepSelecionado) ? 'pointer' : 'not-allowed',
-            transition: 'background-color 0.2s'
-          }}
-        >
-          {carregando ? 'Carregando...' : 'Analisar Gastos'}
-        </button>
-      </form>
+      {/* FILTRO PRINCIPAL */}
+      <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+        <form onSubmit={(e) => { e.preventDefault(); setPepAtivo(pepSelecionado?.value || ''); }} style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ flex: 1 }}>
+            <Select options={opcoesPep} value={pepSelecionado} onChange={setPepSelecionado} placeholder="Selecione o Elemento PEP / WBS..." isSearchable styles={{ control: (b) => ({ ...b, borderRadius: '8px', padding: '4px' }) }} />
+          </div>
+          <button type="submit" style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '0 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
+            Gerar Relatórios
+          </button>
+        </form>
+      </div>
 
-      {/* RESULTADOS */}
-      {pepAtivo && atmsDoPep.length > 0 ? (
+      {stats ? (
         <div className="fade-in">
           
-          {/* CARD DE TOTAL */}
-          <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '6px solid #059669' }}>
-            <span style={{ fontSize: '1rem', color: '#6b7280', fontWeight: 'bold', textTransform: 'uppercase' }}>
-              Total Acumulado no PEP: <span style={{ color: '#111827' }}>{pepAtivo}</span>
-            </span>
-            <span style={{ fontSize: '3.5rem', fontWeight: '900', color: '#059669', marginTop: '0.5rem' }}>
-              {formatarMoeda(totalGasto)}
-            </span>
-            <span style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '0.5rem' }}>
-              Composto por {atmsDoPep.length} solicitação(ões)
-            </span>
-          </div>
-
-          {/* GRÁFICO */}
-          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', marginBottom: '2rem' }}>
-            <h3 style={{ margin: '0 0 1.5rem 0', color: '#111827' }}>Linha do Tempo de Custos</h3>
-            <div style={{ height: '350px', width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dadosGrafico} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis dataKey="dataExibicao" />
-                  <YAxis tickFormatter={(val) => `R$${val}`} />
-                  <Tooltip formatter={(val) => formatarMoeda(val)} />
-                  <Line type="monotone" dataKey="gasto" stroke="#10b981" strokeWidth={4} dot={{ r: 6 }} activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
+          {/* KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #059669', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 'bold' }}>GASTO TOTAL</span>
+              <h3 style={{ fontSize: '1.8rem', margin: '0.5rem 0', color: '#059669' }}>{formatarMoeda(stats.total)}</h3>
+              <span style={{ color: '#10b981', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}><TrendingUp size={14}/> Consolidado</span>
+            </div>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #3b82f6', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 'bold' }}>TICKET MÉDIO / ATM</span>
+              <h3 style={{ fontSize: '1.8rem', margin: '0.5rem 0', color: '#1e293b' }}>{formatarMoeda(stats.media)}</h3>
+              <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Base: {atmsDoPep.length} pedidos</span>
             </div>
           </div>
 
-          {/* 👇 NOVA TABELA DE DETALHAMENTO 👇 */}
-          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#111827' }}>Detalhamento das Despesas</h3>
+          {/* GRÁFICOS LINHA 1 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Evolução do Gasto (Mensal vs Acumulado)</h4>
+              <div style={{ height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dadosGraficoTempo}>
+                    <defs>
+                      <linearGradient id="colorGasto" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#059669" stopOpacity={0.1}/><stop offset="95%" stopColor="#059669" stopOpacity={0}/></linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="data" />
+                    <YAxis hide />
+                    <Tooltip formatter={(v) => formatarMoeda(v)} />
+                    <Area type="monotone" dataKey="acumulado" stroke="#059669" fillOpacity={1} fill="url(#colorGasto)" strokeWidth={3} />
+                    <Line type="monotone" dataKey="gasto" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Distribuição por Modal</h4>
+              <div style={{ height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={stats.modalData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                      {stats.modalData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v) => formatarMoeda(v)} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* GRÁFICOS LINHA 2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Top 5 Transportadoras (R$)</h4>
+              <div style={{ height: '250px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.transData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" width={100} style={{ fontSize: '12px' }} />
+                    <Tooltip formatter={(v) => formatarMoeda(v)} />
+                    <Bar dataKey="valor" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+               <h4 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Destaques do Período</h4>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {stats.transData.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ fontSize: '0.9rem', color: '#475569' }}>{i+1}. {item.name}</span>
+                      <span style={{ fontWeight: '600', color: '#1e293b' }}>{formatarMoeda(item.valor)}</span>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </div>
+
+          {/* TABELA DETALHADA */}
+          <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ marginTop: 0 }}>Listagem Consolidada</h4>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.95rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                    <th style={{ padding: '12px', color: '#4b5563' }}>ID ATM</th>
-                    <th style={{ padding: '12px', color: '#4b5563' }}>Data</th>
-                    <th style={{ padding: '12px', color: '#4b5563' }}>NF / Fatura</th>
-                    <th style={{ padding: '12px', color: '#4b5563' }}>Veículo/Modal</th>
-                    <th style={{ padding: '12px', color: '#4b5563', textAlign: 'right' }}>Valor</th>
+                  <tr style={{ textAlign: 'left', borderBottom: '2px solid #f1f5f9', color: '#64748b', fontSize: '0.85rem' }}>
+                    <th style={{ padding: '12px' }}>ID ATM</th>
+                    <th style={{ padding: '12px' }}>DATA</th>
+                    <th style={{ padding: '12px' }}>TRANSPORTADORA</th>
+                    <th style={{ padding: '12px' }}>NF / CTE</th>
+                    <th style={{ padding: '12px', textAlign: 'right' }}>VALOR FINAL</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {atmsDoPep.map(atm => {
-                    const valor = Number(atm.valor) || Number(atm.valor_nf) || 0;
-                    return (
-                      <tr key={atm.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px', fontWeight: 'bold' }}>#{shortId(atm.id)}</td>
-                        <td style={{ padding: '12px' }}>{formatarDataBR(atm.data_solicitacao || atm.created_at)}</td>
-                        <td style={{ padding: '12px' }}>{atm.nf || atm.fatura_cte || '-'}</td>
-                        <td style={{ padding: '12px' }}>{atm.veiculo || atm.modal || '-'}</td>
-                        <td style={{ padding: '12px', textAlign: 'right', color: valor > 0 ? '#059669' : '#9ca3af', fontWeight: 'bold' }}>
-                          {valor > 0 ? formatarMoeda(valor) : 'Sem custo'}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {atmsDoPep.map(atm => (
+                    <tr key={atm.id} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '0.9rem' }}>
+                      <td style={{ padding: '12px', fontWeight: 'bold' }}>#{atm.id.substring(0,6)}</td>
+                      <td style={{ padding: '12px' }}>{new Date(atm.data_solicitacao || atm.created_at).toLocaleDateString()}</td>
+                      <td style={{ padding: '12px' }}>{atm.transportadora?.nome || 'Pendente'}</td>
+                      <td style={{ padding: '12px' }}>{atm.nf || atm.fatura_cte || '---'}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: '#059669' }}>
+                        {formatarMoeda(Number(atm.valor) || Number(atm.valor_nf) || 0)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
-          {/* 👆 ================================ 👆 */}
 
         </div>
-      ) : pepAtivo && (
-        <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '0.75rem' }}>
-          <p style={{ color: '#6b7280', fontSize: '1.1rem' }}>
-            Nenhum dado financeiro encontrado para o PEP <strong>"{pepAtivo}"</strong>.
-          </p>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '5rem', background: '#fff', borderRadius: '12px' }}>
+          <DollarSign size={48} style={{ color: '#cbd5e1', marginBottom: '1rem' }} />
+          <h3 style={{ color: '#64748b' }}>Aguardando seleção de PEP para análise...</h3>
         </div>
       )}
     </section>
