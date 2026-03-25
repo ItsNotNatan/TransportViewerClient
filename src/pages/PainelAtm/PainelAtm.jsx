@@ -1,5 +1,7 @@
+// src/componentes/PainelAtm/PainelAtm.jsx
 import React, { useState, useEffect } from 'react';
 import './PainelAtm.css';
+import api from '../../services/api'; // 👈 Isso diz ao formulário para usar o "Garçom"
 
 // --- Ícones SVG embutidos ---
 const Search = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>;
@@ -28,18 +30,23 @@ export default function PainelAtm() {
     setPaginaAtual(1);
   }, [searchTerm]);
 
-  const buscarPedidos = async () => {
-    setCarregando(true);
-    try {
-      const resposta = await fetch('http://localhost:3001/api/admin/transportes');
-      const dados = await resposta.json();
-      if (resposta.ok) setAtms(dados);
-    } catch (erro) {
-      console.error(erro);
-    } finally {
-      setCarregando(false);
-    }
-  };
+const buscarPedidos = async () => {
+  setCarregando(true);
+  try {
+    console.log("Tentando buscar dados com o token:", localStorage.getItem('accessToken'));
+    
+    // Tente primeiro a rota que você configurou no backend
+    const resposta = await api.get('/admin/transportes'); 
+    
+    console.log("Dados recebidos:", resposta.data);
+    setAtms(resposta.data);
+  } catch (erro) {
+    console.error("Erro detalhado:", erro.response || erro);
+    alert("Erro ao puxar dados: " + (erro.response?.status === 403 ? "Acesso Proibido (Token Inválido)" : erro.message));
+  } finally {
+    setCarregando(false);
+  }
+};
 
   const atmsFiltrados = atms.filter(atm => {
     const termo = searchTerm.toLowerCase();
@@ -66,6 +73,12 @@ export default function PainelAtm() {
     return dataStr;
   };
 
+  // Função auxiliar para formatar moeda
+  const formatarMoeda = (valor) => {
+    if (!valor) return '-';
+    return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   return (
     <>
       <section className="fade-in section-dashboard">
@@ -86,10 +99,12 @@ export default function PainelAtm() {
               <tr style={{ backgroundColor: '#f3f4f6' }}>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>ID ATM</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Pedido</th>
-                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>NF</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>NF</th> {/* 👈 NF VOLTOU AQUI */}
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>WBS</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Rota</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Veículo</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Transportadora</th> {/* 👈 NOVA COLUNA */}
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Valor Frete</th> {/* 👈 NOVA COLUNA */}
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Status</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb', textAlign: 'center' }}>Ações</th>
               </tr>
@@ -97,20 +112,22 @@ export default function PainelAtm() {
             
             <tbody>
               {carregando ? (
-                <tr><td colSpan="8" className="text-center" style={{padding: '3rem'}}>Carregando seus pedidos...</td></tr>
+                <tr><td colSpan="10" className="text-center" style={{padding: '3rem'}}>Carregando seus pedidos...</td></tr>
               ) : atmsExibidos.length === 0 ? (
-                <tr><td colSpan="8" className="text-center" style={{padding: '3rem', color: '#6b7280'}}>Nenhum pedido encontrado.</td></tr>
+                <tr><td colSpan="10" className="text-center" style={{padding: '3rem', color: '#6b7280'}}>Nenhum pedido encontrado.</td></tr>
               ) : atmsExibidos.map((atm) => (
                 <tr key={atm.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td className="font-bold" title={atm.id}>#{shortId(atm.id)}</td>
                   <td>{atm.pedido_compra || '-'}</td>
-                  <td>{atm.nf || '-'}</td>
+                  <td>{atm.nf || '-'}</td> {/* 👈 NF VOLTOU AQUI */}
                   <td>{atm.wbs || '-'}</td>
                   <td style={{ fontSize: '0.85rem', lineHeight: '1.3' }}>
                     <span style={{color: '#6b7280'}}>De:</span> {atm.origem?.municipio} <br/>
                     <span style={{color: '#6b7280'}}>Para:</span> {atm.destino?.municipio}
                   </td>
                   <td>{atm.veiculo}</td>
+                  <td style={{ fontWeight: '500' }}>{atm.transportadora?.nome || <span style={{color: '#9ca3af'}}>A Definir</span>}</td> {/* 👈 NOVA COLUNA */}
+                  <td style={{ color: '#059669', fontWeight: 'bold' }}>{formatarMoeda(atm.valor || atm.valor_nf)}</td> {/* 👈 NOVA COLUNA */}
                   <td><span className={`badge ${getStatusClass(atm.status)}`}>{atm.status}</span></td>
                   <td style={{ textAlign: 'center' }}>
                     <button className="btn-action" onClick={() => setSelectedAtm(atm)} style={{ padding: '6px 12px' }}>
@@ -149,11 +166,10 @@ export default function PainelAtm() {
               </div>
             </div>
           )}
-
         </div>
       </section>
 
-      {/* MODAL EXPANDIDO MANTIDO IGUAL */}
+      {/* MODAL EXPANDIDO */}
       {selectedAtm && (
         <div className="modal-overlay">
           <div className="modal-content fade-in" style={{ maxWidth: '850px' }}>
@@ -172,7 +188,6 @@ export default function PainelAtm() {
                 <div className="modal-section">
                   <h4>Identificação</h4>
                   <ul>
-                    <li><span>Solicitante:</span> <strong>{selectedAtm.solicitacao || 'Não informado'}</strong></li>
                     <li><span>Pedido Compra:</span> <strong>{selectedAtm.pedido_compra || 'Não informado'}</strong></li>
                     <li><span>Nota Fiscal:</span> <strong>{selectedAtm.nf || 'Não informado'}</strong></li>
                     <li><span>Centro de Custo (WBS):</span> <strong>{selectedAtm.wbs || 'Não informado'}</strong></li>
@@ -184,11 +199,12 @@ export default function PainelAtm() {
                 <div className="modal-section">
                   <h4>Carga e Logística</h4>
                   <ul>
-                    <li><span>Peso Estimado:</span> <strong>{selectedAtm.peso ? `${selectedAtm.peso} kg` : 'Não informado'}</strong></li>
-                    <li><span>Volume Total:</span> <strong>{selectedAtm.volume ? `${selectedAtm.volume} m³` : 'Não informado'}</strong></li>
+                    <li><span>Transportadora:</span> <strong>{selectedAtm.transportadora?.nome || 'A Definir'}</strong></li>
+                    <li><span>Valor do Frete:</span> <strong style={{ color: '#059669' }}>{formatarMoeda(selectedAtm.valor || selectedAtm.valor_nf)}</strong></li>
                     <li><span>Tipo de Veículo:</span> <strong>{selectedAtm.veiculo || 'Não informado'}</strong></li>
                     <li><span>Tipo de Frete:</span> <strong>{selectedAtm.tipo_frete || 'Não informado'}</strong></li>
-                    <li><span>Transportadora:</span> <strong>{selectedAtm.transportadora?.nome || 'A Definir'}</strong></li>
+                    <li><span>Peso Estimado:</span> <strong>{selectedAtm.peso ? `${selectedAtm.peso} kg` : 'Não informado'}</strong></li>
+                    <li><span>Volume Total:</span> <strong>{selectedAtm.volume ? `${selectedAtm.volume} m³` : 'Não informado'}</strong></li>
                   </ul>
                 </div>
 

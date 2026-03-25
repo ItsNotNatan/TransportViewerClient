@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './RequestForm.css';
+import api from '../../services/api';
 // Importando a lista do arquivo que acabamos de criar
 import { LISTA_VEICULOS } from './ListaVeiculos.js'; 
 
@@ -66,37 +67,49 @@ export default function RequestForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setCarregando(true);
+
+    // 1. Coleta os dados do formulário
     const formData = new FormData(e.target);
     const dados = Object.fromEntries(formData.entries());
-    dados.dataSolicitacao = dataHoje;
 
-    // Lógica do modal automático mantida intacta
+    // 2. Adiciona campos automáticos e lógica de modal
+    dados.dataSolicitacao = dataHoje;
     dados.modal = dados.veiculo === 'AVIÃO' ? 'AÉREO' : 'TERRESTRE';
 
     try {
-      const resposta = await fetch('http://localhost:3001/api/transportes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dados), 
-      });
+      // 3. Envia para o Backend (O Axios já sabe que a base é http://localhost:3001/api)
+      // O destino final será /api/transportes
+      const resposta = await api.post('/transportes', dados);
 
-      const resultado = await resposta.json();
+      // 4. Se o status for 200 ou 201 (Sucesso)
+      alert(`✅ Sucesso! Transporte solicitado!\nID Gerado: ${resposta.data.id_gerado}`);
 
-      if (resposta.ok) {
-        alert(`Sucesso! Transporte solicitado! (ID: ${resultado.id_gerado})`);
-        e.target.reset();
-        setColeta({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
-        setEntrega({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
-        setDataColeta('');
-        setDataEntrega('');
-        setTelefoneContato(''); 
-      } else {
-        alert("ERRO DO SERVIDOR: \n\n" + JSON.stringify(resultado, null, 2));
-      }
+      // 5. Reseta o formulário e os estados visuais
+      e.target.reset();
+      setColeta({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
+      setEntrega({ cep: '', logradouro: '', bairro: '', localidade: '', uf: '' });
+      setDataColeta('');
+      setDataEntrega('');
+      setTelefoneContato('');
+
     } catch (erro) {
-      alert("ERRO DE CONEXÃO/REACT: \n\n" + erro.message);
+      console.error("Erro no envio:", erro);
+
+      // 6. Tratamento de Erro detalhado para você saber o que houve
+      if (erro.response) {
+        // O servidor respondeu, mas com erro (ex: 404, 400, 500)
+        const status = erro.response.status;
+        if (status === 404) {
+          alert("❌ ERRO 404: O endereço /api/transportes não foi encontrado no servidor.\nVerifique se o Backend foi reiniciado após as mudanças no server.js.");
+        } else {
+          alert(`⚠️ Erro ${status}: ${erro.response.data.erro || "Falha no servidor"}`);
+        }
+      } else if (erro.request) {
+        // A requisição foi feita, mas o servidor não respondeu (Backend desligado)
+        alert("❌ O servidor (Backend) não respondeu. Verifique se ele está rodando na porta 3001.");
+      } else {
+        alert("❌ Erro ao configurar a requisição: " + erro.message);
+      }
     } finally {
       setCarregando(false);
     }

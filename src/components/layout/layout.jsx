@@ -1,38 +1,94 @@
-// src/components/layout/layout.jsx
+// src/componentes/layout/layout.jsx
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import './layout.css'; // 👈 Não esqueça de importar o CSS aqui!
 
 export default function Layout() {
+  const navigate = useNavigate();
+
+  // 1. Lógica de Autenticação
+  const estaLogado = !!localStorage.getItem('accessToken');
+  const nomeUsuario = localStorage.getItem('userName');
+
+  const handleLogout = () => {
+    localStorage.clear(); 
+    navigate('/login');    
+  };
+
   return (
     <div className="app-layout">
       
-      {/* A MOLDURA: O CABEÇALHO FIXO */}
-      <header className="app-header" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
+      {/* CABEÇALHO PRINCIPAL */}
+      <header className="app-header">
         
-        {/* 1. Lado Esquerdo: A Logo */}
-        <div className="logo-container" style={{ justifySelf: 'start' }}>
+        {/* 1. LADO ESQUERDO: LOGO */}
+        <Link to="/" className="logo-container">
           <i className="fa-solid fa-truck-fast"></i>
           <span>ATM<span className="text-primary">Log</span></span>
           <span className="badge-role">Cliente</span>
-        </div>
+        </Link>
         
-        {/* 2. Meio: A Navegação Centralizada */}
-        <nav className="nav-links" style={{ justifySelf: 'center', display: 'flex', gap: '1rem' }}>
-          <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Solicitar Transporte</NavLink>
-          <NavLink to="/rastreio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Rastrear Carga</NavLink>
-          <NavLink to="/painelatm" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Painel ATM</NavLink>
-          {/* 👇 NOVA ABA DO FINANCEIRO AQUI 👇 */}
-          <NavLink to="/financeiro" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>Acomp. Financeiro</NavLink>
+        {/* 2. MEIO: NAVEGAÇÃO CENTRALIZADA */}
+        <nav className="nav-links">
+          <NavLink 
+            to="/" 
+            className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+          >
+            Solicitar Transporte
+          </NavLink>
+          
+          <NavLink 
+            to="/rastreio" 
+            className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+          >
+            Rastrear Carga
+          </NavLink>
+
+          {/* Renderização Condicional: Só aparece se o usuário estiver logado */}
+          {estaLogado && (
+            <>
+              <NavLink 
+                to="/painelatm" 
+                className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+              >
+                Painel ATM
+              </NavLink>
+              
+              <NavLink 
+                to="/financeiro" 
+                className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+              >
+                Acomp. Financeiro
+              </NavLink>
+            </>
+          )}
         </nav>
 
-        {/* 3. Lado Direito: Uma div vazia apenas para manter o equilíbrio do Grid */}
-        <div></div>
+        {/* 3. LADO DIREITO: BOTÃO DE LOGIN / PERFIL */}
+        <div className="auth-section">
+          {estaLogado ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                Olá, <strong>{nomeUsuario || 'Colaborador'}</strong>
+              </span>
+              <button className="btn-logout-header" onClick={handleLogout}>
+                Sair
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="btn-login-header">
+              Login Colaborador
+            </Link>
+          )}
+        </div>
         
       </header>
 
-      {/* O BURACO DA MOLDURA: ONDE AS TELAS APARECEM */}
+      {/* CONTEÚDO DAS PÁGINAS */}
       <main className="app-main">
-        <Outlet /> 
+        <div className="fade-in">
+          <Outlet />
+        </div>
       </main>
       
     </div>
