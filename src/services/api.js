@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// 🔴 O segredo está aqui: trocamos o localhost pela URL do Render que funcionou no Postman
 const api = axios.create({
-  baseURL: 'https://backendtransportview.onrender.com/api' 
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 });
 
 // Interceptor para colocar o token (se existir) em toda requisição
