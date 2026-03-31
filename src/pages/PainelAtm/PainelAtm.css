@@ -49,13 +49,22 @@
    /* =========================================
       MODAL EXPANDIDO (Ficha Cadastral)
       ========================================= */
-   .modal-overlay {
-     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-     background-color: rgba(17, 24, 39, 0.7);
-     display: flex; justify-content: center; align-items: center;
-     z-index: 1000;
-     backdrop-filter: blur(4px);
-   }
+/* =========================================
+   MODAL EXPANDIDO (Ficha Cadastral)
+   ========================================= */
+.modal-overlay {
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100vw;    /* 👈 Força 100% da largura da tela do navegador */
+  height: 100vh;   /* 👈 Força 100% da altura da tela do navegador */
+  background-color: rgba(17, 24, 39, 0.7);
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  z-index: 99999;  /* 👈 Número absurdamente alto para passar por cima do Header (que é 1000) */
+  backdrop-filter: blur(4px);
+}
    
    .modal-content {
      background: white; border-radius: 0.75rem; width: 100%; max-width: 850px;

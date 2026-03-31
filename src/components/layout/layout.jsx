@@ -1,12 +1,12 @@
 // src/componentes/layout/layout.jsx
 import React from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
-import './layout.css'; // 👈 Não esqueça de importar o CSS aqui!
+import logoComau from '../../assets/logo-comau.png'; // 👈 Importando o logo
+import './layout.css';
 
 export default function Layout() {
   const navigate = useNavigate();
 
-  // 1. Lógica de Autenticação
   const estaLogado = !!localStorage.getItem('accessToken');
   const nomeUsuario = localStorage.getItem('userName');
 
@@ -18,17 +18,16 @@ export default function Layout() {
   return (
     <div className="app-layout">
       
-      {/* CABEÇALHO PRINCIPAL */}
       <header className="app-header">
         
-        {/* 1. LADO ESQUERDO: LOGO */}
+        {/* LADO ESQUERDO: LOGO COMAU + NOME */}
         <Link to="/" className="logo-container">
-          <i className="fa-solid fa-truck-fast"></i>
-          <span>ATM<span className="text-primary">Log</span></span>
+          <img src={logoComau} alt="Comau" className="logo-img" />
+          <span className="logo-text">ATM<span className="text-primary">Log</span></span>
           <span className="badge-role">Cliente</span>
         </Link>
         
-        {/* 2. MEIO: NAVEGAÇÃO CENTRALIZADA */}
+        {/* MEIO: NAVEGAÇÃO CENTRALIZADA */}
         <nav className="nav-links">
           <NavLink 
             to="/" 
@@ -44,7 +43,6 @@ export default function Layout() {
             Rastrear Carga
           </NavLink>
 
-          {/* Renderização Condicional: Só aparece se o usuário estiver logado */}
           {estaLogado && (
             <>
               <NavLink 
@@ -64,11 +62,11 @@ export default function Layout() {
           )}
         </nav>
 
-        {/* 3. LADO DIREITO: BOTÃO DE LOGIN / PERFIL */}
+        {/* LADO DIREITO: LOGIN / PERFIL */}
         <div className="auth-section">
           {estaLogado ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+              <span className="user-welcome">
                 Olá, <strong>{nomeUsuario || 'Colaborador'}</strong>
               </span>
               <button className="btn-logout-header" onClick={handleLogout}>
@@ -84,7 +82,6 @@ export default function Layout() {
         
       </header>
 
-      {/* CONTEÚDO DAS PÁGINAS */}
       <main className="app-main">
         <div className="fade-in">
           <Outlet />

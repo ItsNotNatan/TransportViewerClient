@@ -1,7 +1,8 @@
 // src/componentes/PainelAtm/PainelAtm.jsx
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom'; // 👈 IMPORT DO PORTAL ADICIONADO AQUI!
 import './PainelAtm.css';
-import api from '../../services/api'; // 👈 Isso diz ao formulário para usar o "Garçom"
+import api from '../../services/api'; 
 
 // --- Ícones SVG embutidos ---
 const Search = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>;
@@ -30,23 +31,23 @@ export default function PainelAtm() {
     setPaginaAtual(1);
   }, [searchTerm]);
 
-const buscarPedidos = async () => {
-  setCarregando(true);
-  try {
-    console.log("Tentando buscar dados com o token:", localStorage.getItem('accessToken'));
-    
-    // Tente primeiro a rota que você configurou no backend
-    const resposta = await api.get('/admin/transportes'); 
-    
-    console.log("Dados recebidos:", resposta.data);
-    setAtms(resposta.data);
-  } catch (erro) {
-    console.error("Erro detalhado:", erro.response || erro);
-    alert("Erro ao puxar dados: " + (erro.response?.status === 403 ? "Acesso Proibido (Token Inválido)" : erro.message));
-  } finally {
-    setCarregando(false);
-  }
-};
+  const buscarPedidos = async () => {
+    setCarregando(true);
+    try {
+      console.log("Tentando buscar dados com o token:", localStorage.getItem('accessToken'));
+      
+      // Tente primeiro a rota que você configurou no backend
+      const resposta = await api.get('/admin/transportes'); 
+      
+      console.log("Dados recebidos:", resposta.data);
+      setAtms(resposta.data);
+    } catch (erro) {
+      console.error("Erro detalhado:", erro.response || erro);
+      alert("Erro ao puxar dados: " + (erro.response?.status === 403 ? "Acesso Proibido (Token Inválido)" : erro.message));
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   const atmsFiltrados = atms.filter(atm => {
     const termo = searchTerm.toLowerCase();
@@ -90,21 +91,21 @@ const buscarPedidos = async () => {
           </div>
         </div>
         
-        {/* 👇 CONTAINER DA TABELA COM ALTURA MAXIMA E SCROLL VERTICAL 👇 */}
+        {/* CONTAINER DA TABELA */}
         <div className="table-container" style={{ overflowY: 'auto', maxHeight: '65vh', position: 'relative', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
           <table className="data-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
             
-            {/* 👇 CABEÇALHO FIXO (STICKY) 👇 */}
+            {/* CABEÇALHO FIXO */}
             <thead style={{ position: 'sticky', top: 0, zIndex: 20, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
               <tr style={{ backgroundColor: '#f3f4f6' }}>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>ID ATM</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Pedido</th>
-                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>NF</th> {/* 👈 NF VOLTOU AQUI */}
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>NF</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>WBS</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Rota</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Veículo</th>
-                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Transportadora</th> {/* 👈 NOVA COLUNA */}
-                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Valor Frete</th> {/* 👈 NOVA COLUNA */}
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Transportadora</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Valor Frete</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Status</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb', textAlign: 'center' }}>Ações</th>
               </tr>
@@ -119,15 +120,15 @@ const buscarPedidos = async () => {
                 <tr key={atm.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td className="font-bold" title={atm.id}>#{shortId(atm.id)}</td>
                   <td>{atm.pedido_compra || '-'}</td>
-                  <td>{atm.nf || '-'}</td> {/* 👈 NF VOLTOU AQUI */}
+                  <td>{atm.nf || '-'}</td>
                   <td>{atm.wbs || '-'}</td>
                   <td style={{ fontSize: '0.85rem', lineHeight: '1.3' }}>
                     <span style={{color: '#6b7280'}}>De:</span> {atm.origem?.municipio} <br/>
                     <span style={{color: '#6b7280'}}>Para:</span> {atm.destino?.municipio}
                   </td>
                   <td>{atm.veiculo}</td>
-                  <td style={{ fontWeight: '500' }}>{atm.transportadora?.nome || <span style={{color: '#9ca3af'}}>A Definir</span>}</td> {/* 👈 NOVA COLUNA */}
-                  <td style={{ color: '#059669', fontWeight: 'bold' }}>{formatarMoeda(atm.valor || atm.valor_nf)}</td> {/* 👈 NOVA COLUNA */}
+                  <td style={{ fontWeight: '500' }}>{atm.transportadora?.nome || <span style={{color: '#9ca3af'}}>A Definir</span>}</td>
+                  <td style={{ color: '#059669', fontWeight: 'bold' }}>{formatarMoeda(atm.valor || atm.valor_nf)}</td>
                   <td><span className={`badge ${getStatusClass(atm.status)}`}>{atm.status}</span></td>
                   <td style={{ textAlign: 'center' }}>
                     <button className="btn-action" onClick={() => setSelectedAtm(atm)} style={{ padding: '6px 12px' }}>
@@ -139,7 +140,7 @@ const buscarPedidos = async () => {
             </tbody>
           </table>
 
-          {/* 👇 PAGINAÇÃO FIXA (STICKY) NO FUNDO DA TABELA 👇 */}
+          {/* PAGINAÇÃO FIXA NO FUNDO DA TABELA */}
           {!carregando && totalPaginas > 1 && (
             <div style={{ position: 'sticky', bottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb', zIndex: 20 }}>
               <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
@@ -169,8 +170,8 @@ const buscarPedidos = async () => {
         </div>
       </section>
 
-      {/* MODAL EXPANDIDO */}
-      {selectedAtm && (
+      {/* 👇 A MÁGICA ACONTECE AQUI: MODAL EXPANDIDO COM PORTAL 👇 */}
+      {selectedAtm && createPortal(
         <div className="modal-overlay">
           <div className="modal-content fade-in" style={{ maxWidth: '850px' }}>
             <div className="modal-header">
@@ -250,7 +251,8 @@ const buscarPedidos = async () => {
               <button className="btn-secondary" onClick={() => setSelectedAtm(null)}>Fechar</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body // 👈 E A MÁGICA TERMINA AQUI, JOGANDO O MODAL PARA O BODY!
       )}
     </>
   );

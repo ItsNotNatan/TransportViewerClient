@@ -132,3 +132,39 @@
   background-color: #fef2f2;
   border-color: #ef4444;
 }
+
+/* --- LOGO (VERSÃO COM IMAGEM + TEXTO) --- */
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.logo-img {
+  height: 28px; /* Altura para alinhar com o texto */
+  width: auto;
+  object-fit: contain;
+}
+
+.logo-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.text-primary {
+  color: #2563eb;
+}
+
+.badge-role {
+  background-color: #eff6ff;
+  color: #1e40af;
+  font-size: 0.7rem;
+  padding: 2px 10px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  border: 1px solid #dbeafe;
+}
