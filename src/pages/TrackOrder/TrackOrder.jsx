@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './TrackOrder.css';
+import api from '../../services/api' // 🟢 ATENÇÃO: Ajuste este caminho para o local do seu arquivo api.js
 
 // Ícones
 const Box = ({ size = 24 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>;
@@ -21,30 +22,37 @@ export default function TrackOrder() {
     setResultado(null);
 
     try {
-      // Vai ao Back-End buscar os dados na porta 3001
-      const resposta = await fetch('http://localhost:3001/api/admin/transportes');
-      const dados = await resposta.json();
+      // 🟢 USANDO O AXIOS CONFIGURADO EM VEZ DO FETCH
+      // Ele já sabe o baseURL e já coloca o Token no cabeçalho automaticamente!
+      const resposta = await api.get('/admin/transportes');
+      
+      // O Axios guarda o JSON da resposta dentro da propriedade 'data'
+      const dados = resposta.data; 
 
-      if (resposta.ok) {
-        const termoBusca = trackId.toLowerCase().trim();
+      const termoBusca = trackId.toLowerCase().trim();
+      
+      // 🟢 MUDANÇA AQUI: Procura no banco APENAS pelo ID do ATM (ou numero_atm, se existir)
+      const pedidoEncontrado = dados.find(atm => {
+        const idMatch = atm.id && String(atm.id).toLowerCase().includes(termoBusca);
+        const numeroAtmMatch = atm.numero_atm && String(atm.numero_atm).toLowerCase().includes(termoBusca);
         
-        // Procura no banco um pedido que bata com o ID, Pedido de Compra ou NF
-        const pedidoEncontrado = dados.find(atm => 
-          (atm.id && atm.id.toLowerCase().includes(termoBusca)) ||
-          (atm.pedido_compra && atm.pedido_compra.toLowerCase().includes(termoBusca)) ||
-          (atm.nf && atm.nf.toLowerCase().includes(termoBusca))
-        );
+        return idMatch || numeroAtmMatch;
+      });
 
-        if (pedidoEncontrado) {
-          setResultado(pedidoEncontrado);
-        } else {
-          setErro("Nenhum pedido encontrado com este código ou NF. Verifique e tente novamente.");
-        }
+      if (pedidoEncontrado) {
+        setResultado(pedidoEncontrado);
       } else {
-        setErro("Erro no servidor ao tentar buscar os dados.");
+        setErro("Nenhum pedido encontrado com este código de ATM. Verifique e tente novamente.");
       }
+
     } catch (e) {
-      setErro("Erro de conexão. Verifique se o servidor está rodando na porta 3001.");
+      console.error("Erro na busca:", e);
+      // O Axios joga erros de status (401, 404, 500) direto pro catch
+      if (e.response && e.response.status === 401) {
+        setErro("Você não tem autorização (Token inválido ou expirado).");
+      } else {
+        setErro("Erro de conexão. Verifique se o servidor está rodando.");
+      }
     } finally {
       setCarregando(false);
     }
@@ -55,11 +63,10 @@ export default function TrackOrder() {
   const formatarData = (dataStr) => {
     if (!dataStr) return 'Não informada';
     const partes = dataStr.split('-');
-    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`; // Transforma 2026-03-10 em 10/03/2026
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`; 
     return dataStr;
   };
 
-  // Função para formatar o valor como Moeda Brasileira (Reais)
   const formatarValor = (valor) => {
     if (!valor || isNaN(valor)) return 'Sob Consulta';
     return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -72,7 +79,7 @@ export default function TrackOrder() {
       s1 = 'completed'; s2 = 'completed'; s3 = 'active';
     } else if (status === 'Em Trânsito' || status === 'Aprovado') {
       s1 = 'completed'; s2 = 'active'; s3 = '';
-    } else { // Aguardando Aprovação e outros
+    } else { 
       s1 = 'active'; s2 = ''; s3 = '';
     }
     return { s1, s2, s3 };
@@ -89,7 +96,7 @@ export default function TrackOrder() {
       <div className="track-search-box" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
         <input 
           type="text" 
-          placeholder="ID do ATM, Pedido de Compra ou NF..." 
+          placeholder="Digite apenas o ID do ATM..." 
           className="input-control" 
           style={{ flex: 1, padding: '1rem', fontSize: '1.1rem' }} 
           value={trackId} 
@@ -114,19 +121,20 @@ export default function TrackOrder() {
           <div className="track-result-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <div>
               <span style={{ fontSize: '0.875rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' }}>Resultado:</span>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827' }}>ATM #{shortId(resultado.id)}</h3>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827' }}>ATM #{shortId(resultado.numero_atm)}</h3>
             </div>
             <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', padding: '0.5rem 1rem', borderRadius: '2rem', fontWeight: 'bold' }}>
               {resultado.status}
             </span>
           </div>
           
-          {/* Mudei gridTemplateColumns para 5 para caber a nova coluna de Valor */}
           <div className="track-info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '2rem', backgroundColor: '#f9fafb', padding: '1.5rem', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Origem</span><strong>{resultado.origem?.municipio} - {resultado.origem?.uf}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Destino</span><strong>{resultado.destino?.municipio} - {resultado.destino?.uf}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Previsão</span><strong>{formatarData(resultado.data_entrega)}</strong></div>
             <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Veículo</span><strong>{resultado.veiculo}</strong></div>
+            {/* Coluna de valor adicionada já que o grid foi alterado para 5 */}
+            <div><span style={{ display: 'block', fontSize: '0.875rem', color: '#6b7280' }}>Valor</span><strong>{formatarValor(resultado.valor || resultado.valor_frete)}</strong></div>
           </div>
           
           <div className="timeline-container">
