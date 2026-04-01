@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AbaSimulacao from '../../components/AbaSimulacao/AbaSimulacao.jsx';
 import './RequestForm.css';
 import api from '../../services/api';
 // Importando a lista do arquivo que acabamos de criar
@@ -116,6 +117,8 @@ export default function RequestForm() {
   };
 
   return (
+    <>  
+    <AbaSimulacao />
     <section className="form-card fade-in">
       <div className="card-header">
         <h3 className="card-title">Solicitação de Transporte</h3>
@@ -304,5 +307,6 @@ export default function RequestForm() {
         </div>
       </form>
     </section>
+    </>
   );
 }

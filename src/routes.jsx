@@ -5,11 +5,12 @@ import TrackOrder from './pages/TrackOrder/TrackOrder';
 import PainelAtm from './pages/PainelAtm/PainelAtm';
 import AcompFinan from './pages/AcompFinan/AcompFinan'; 
 import Login from './pages/Login/Login';
+// 1. Importe a página do Medidor de Cargas
+import MedidorCargas from './pages/MedidorCargas/MedidorCargas'; 
 
 // 🔒 COMPONENTE DE PROTEÇÃO
 const RotaPrivada = ({ children }) => {
   const token = localStorage.getItem('accessToken');
-  // Se não estiver logado, redireciona para o login
   if (!token) {
     return <Navigate to="/login" replace />;
   }
@@ -24,6 +25,10 @@ export const router = createBrowserRouter([
       // ✅ PÁGINAS PÚBLICAS
       { path: "/", element: <RequestForm /> }, 
       { path: "/rastreio", element: <TrackOrder /> },
+      
+      // 2. Adicione a rota do simulador aqui
+      // Ela deve bater com o nome usado no navigate da AbaSimulacao
+      { path: "/simulador-veiculo", element: <MedidorCargas /> },
       
       // 🔒 PÁGINAS PROTEGIDAS
       { 
