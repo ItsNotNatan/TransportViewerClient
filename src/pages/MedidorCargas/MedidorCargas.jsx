@@ -1,18 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import * as THREE from 'three';
-// Importação para permitir girar/dar zoom com o mouse
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import api from '../../services/api'; // Sua configuração do Axios
 import './MedidorCargas.css';
-
-const VEICULOS = [
-  { id: 'fiorino', nome: 'Fiorino', comp: 1.70, larg: 1.10, alt: 1.10 },
-  { id: 'doubledeck', nome: 'Double Deck', comp: 1.00, larg: 2.45, alt: 2.95 },
-  { id: 'van', nome: 'VAN', comp: 2.80, larg: 1.55, alt: 1.70 },
-  { id: 'vuc', nome: 'Caminhão VUC', comp: 3.20, larg: 2.05, alt: 2.10 },
-  { id: 'caminhao34', nome: 'Caminhão 3/4', comp: 4.30, larg: 2.15, alt: 2.20 },
-  { id: 'truck', nome: 'Truck', comp: 6.20, larg: 2.40, alt: 2.50 },
-].map(v => ({ ...v, volumeMax: v.comp * v.larg * v.alt }));
 
 const PALETA_CORES = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#eab308', '#ec4899'];
 
@@ -20,15 +11,53 @@ export default function MedidorCargas() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [veiculoSelecionado, setVeiculoSelecionado] = useState(VEICULOS[4]);
+  // Estados para os dados vindos do banco
+  const [veiculosBD, setVeiculosBD] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [veiculoSelecionado, setVeiculoSelecionado] = useState(null);
+  
   const [cargas, setCargas] = useState([]);
   const [showRelatorio, setShowRelatorio] = useState(false);
 
+  // Estados do formulário de carga
   const [inputComp, setInputComp] = useState('1.20');
   const [inputLarg, setInputLarg] = useState('0.80');
   const [inputAlt, setInputAlt] = useState('0.70');
   const [inputQtd, setInputQtd] = useState('1');
 
+  // 1. Busca os veículos no banco de dados ao abrir a tela
+  useEffect(() => {
+    const fetchVeiculos = async () => {
+      try {
+        const response = await api.get('/admin/veiculos');
+        
+        // Mapeia os veículos garantindo que os valores são números e calcula o volume máximo
+        const veiculosFormatados = response.data.map(v => ({
+          ...v,
+          comprimento: parseFloat(v.comprimento),
+          largura: parseFloat(v.largura),
+          altura: parseFloat(v.altura),
+          volumeMax: parseFloat(v.comprimento) * parseFloat(v.largura) * parseFloat(v.altura)
+        }));
+
+        setVeiculosBD(veiculosFormatados);
+        
+        // Se encontrou veículos, seleciona o primeiro por padrão
+        if (veiculosFormatados.length > 0) {
+          setVeiculoSelecionado(veiculosFormatados[0]);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar veículos:", error);
+        alert("Erro ao carregar os veículos do banco de dados.");
+      } finally {
+        setCarregando(false);
+      }
+    };
+
+    fetchVeiculos();
+  }, []);
+
+  // Verifica se a tela foi aberta com a intenção de mostrar o relatório
   useEffect(() => {
     if (location.state?.abrirRelatorio) {
       setShowRelatorio(true);
@@ -36,6 +65,17 @@ export default function MedidorCargas() {
     }
   }, [location]);
 
+  // Se ainda estiver carregando, mostra uma tela de aviso
+  if (carregando) {
+    return <div style={{ padding: '20px', color: 'white' }}>Carregando simulador e frota...</div>;
+  }
+
+  // Se não houver veículos cadastrados no banco
+  if (!veiculoSelecionado) {
+    return <div style={{ padding: '20px', color: 'white' }}>Nenhum veículo cadastrado no sistema. Cadastre um veículo primeiro.</div>;
+  }
+
+  // Cálculos volumétricos
   const volumeTotalCargas = cargas.reduce((acc, c) => acc + (c.comp * c.larg * c.alt * c.qtd), 0);
   const ocupacaoPercent = ((volumeTotalCargas / veiculoSelecionado.volumeMax) * 100).toFixed(1);
 
@@ -109,7 +149,7 @@ export default function MedidorCargas() {
         <footer className="veiculos-section-3d">
           <p className="label-section-3d">Tipo de Veículo</p>
           <div className="veiculos-grid-3d">
-            {VEICULOS.map(v => (
+            {veiculosBD.map(v => (
               <button key={v.id} onClick={() => setVeiculoSelecionado(v)} className={`btn-veiculo-3d ${veiculoSelecionado.id === v.id ? 'active' : ''}`}>
                 {v.nome}
               </button>
@@ -262,11 +302,11 @@ function Scene3D({ veiculo, cargas }) {
       if(obj.material) obj.material.dispose();
     }
 
-    // Desenhar Baú
-    const bauGeo = new THREE.BoxGeometry(v.larg, v.alt, v.comp);
+    // 🎯 AQUI UTILIZAMOS AS VARIÁVEIS EXATAS DO BANCO DE DADOS (largura, altura, comprimento)
+    const bauGeo = new THREE.BoxGeometry(v.largura, v.altura, v.comprimento);
     const bauMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, transparent: true, opacity: 0.1 });
     const bau = new THREE.Mesh(bauGeo, bauMat);
-    bau.position.y = v.alt / 2;
+    bau.position.y = v.altura / 2;
     group.add(bau);
 
     const edges = new THREE.EdgesGeometry(bauGeo);
@@ -278,8 +318,8 @@ function Scene3D({ veiculo, cargas }) {
     const grid = new THREE.GridHelper(10, 10, 0x94a3b8, 0xcbd5e1);
     sceneRef.current.add(grid);
 
-    // Lógica de Empilhamento
-    let currentZ = -v.comp / 2;
+    // Lógica de Empilhamento das cargas
+    let currentZ = -v.comprimento / 2;
     cs.forEach(c => {
       for(let i=0; i<c.qtd; i++) {
         const item = new THREE.Mesh(
@@ -288,7 +328,7 @@ function Scene3D({ veiculo, cargas }) {
         );
         item.position.set(0, c.alt/2, currentZ + c.comp/2);
         group.add(item);
-        currentZ += c.comp;
+        currentZ += c.comp; // Avança o eixo Z com base no comprimento da carga
       }
     });
   };
