@@ -11,7 +11,6 @@ export default function MedidorCargas() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Estados para os dados vindos do banco
   const [veiculosBD, setVeiculosBD] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [veiculoSelecionado, setVeiculoSelecionado] = useState(null);
@@ -19,19 +18,16 @@ export default function MedidorCargas() {
   const [cargas, setCargas] = useState([]);
   const [showRelatorio, setShowRelatorio] = useState(false);
 
-  // Estados do formulário de carga
-  const [inputComp, setInputComp] = useState('1.20');
-  const [inputLarg, setInputLarg] = useState('0.80');
-  const [inputAlt, setInputAlt] = useState('0.70');
-  const [inputQtd, setInputQtd] = useState('1');
+  const [inputComp, setInputComp] = useState('0.40'); // Padrão menor para ver o empilhamento
+  const [inputLarg, setInputLarg] = useState('0.40');
+  const [inputAlt, setInputAlt] = useState('0.40');
+  const [inputQtd, setInputQtd] = useState('10');
 
-  // 1. Busca os veículos no banco de dados ao abrir a tela
   useEffect(() => {
     const fetchVeiculos = async () => {
       try {
         const response = await api.get('/admin/veiculos');
         
-        // Mapeia os veículos garantindo que os valores são números e calcula o volume máximo
         const veiculosFormatados = response.data.map(v => ({
           ...v,
           comprimento: parseFloat(v.comprimento),
@@ -41,8 +37,6 @@ export default function MedidorCargas() {
         }));
 
         setVeiculosBD(veiculosFormatados);
-        
-        // Se encontrou veículos, seleciona o primeiro por padrão
         if (veiculosFormatados.length > 0) {
           setVeiculoSelecionado(veiculosFormatados[0]);
         }
@@ -53,11 +47,9 @@ export default function MedidorCargas() {
         setCarregando(false);
       }
     };
-
     fetchVeiculos();
   }, []);
 
-  // Verifica se a tela foi aberta com a intenção de mostrar o relatório
   useEffect(() => {
     if (location.state?.abrirRelatorio) {
       setShowRelatorio(true);
@@ -65,17 +57,9 @@ export default function MedidorCargas() {
     }
   }, [location]);
 
-  // Se ainda estiver carregando, mostra uma tela de aviso
-  if (carregando) {
-    return <div style={{ padding: '20px', color: 'white' }}>Carregando simulador e frota...</div>;
-  }
+  if (carregando) return <div style={{ padding: '20px', color: 'black' }}>Carregando simulador e frota...</div>;
+  if (!veiculoSelecionado) return <div style={{ padding: '20px', color: 'black' }}>Nenhum veículo cadastrado no sistema.</div>;
 
-  // Se não houver veículos cadastrados no banco
-  if (!veiculoSelecionado) {
-    return <div style={{ padding: '20px', color: 'white' }}>Nenhum veículo cadastrado no sistema. Cadastre um veículo primeiro.</div>;
-  }
-
-  // Cálculos volumétricos
   const volumeTotalCargas = cargas.reduce((acc, c) => acc + (c.comp * c.larg * c.alt * c.qtd), 0);
   const ocupacaoPercent = ((volumeTotalCargas / veiculoSelecionado.volumeMax) * 100).toFixed(1);
 
@@ -158,26 +142,22 @@ export default function MedidorCargas() {
         </footer>
       </aside>
 
-      <main className="medidor-visualizacao">
-        <div className="overlay-instrucoes">Use o mouse para girar e zoom</div>
+      <main className="medidor-visualizacao" style={{ position: 'relative' }}>
+        <div className="overlay-instrucoes" style={{ pointerEvents: 'none', zIndex: 10 }}>
+          Use o mouse para girar e dar zoom
+        </div>
         <Scene3D veiculo={veiculoSelecionado} cargas={cargas} />
       </main>
 
       {showRelatorio && (
-        <ModalRelatorio 
-          veiculo={veiculoSelecionado} 
-          cargas={cargas} 
-          volumeTotal={volumeTotalCargas} 
-          ocupacao={ocupacaoPercent} 
-          onClose={() => setShowRelatorio(false)} 
-        />
+        <ModalRelatorio veiculo={veiculoSelecionado} cargas={cargas} volumeTotal={volumeTotalCargas} ocupacao={ocupacaoPercent} onClose={() => setShowRelatorio(false)} />
       )}
     </div>
   );
 }
 
-// --- COMPONENTE DO MODAL ---
 function ModalRelatorio({ veiculo, cargas, volumeTotal, ocupacao, onClose }) {
+  // Modal mantido idêntico ao seu original
   return (
     <div className="modal-overlay-3d">
       <div className="modal-backdrop-3d" onClick={onClose}></div>
@@ -217,121 +197,201 @@ function ModalRelatorio({ veiculo, cargas, volumeTotal, ocupacao, onClose }) {
   );
 }
 
-// --- COMPONENTE SCENE 3D ---
+// --- COMPONENTE SCENE 3D À PROVA DE FALHAS ---
 function Scene3D({ veiculo, cargas }) {
-  const mountRef = useRef(null);
-  const sceneRef = useRef(null);
+  const canvasRef = useRef(null); // 🟢 Usaremos um Canvas fixo, é a forma 100% segura no React!
   const rendererRef = useRef(null);
   const cameraRef = useRef(null);
+  const controlsRef = useRef(null);
   const groupRef = useRef(null);
+  const sceneRef = useRef(null);
 
+  // Inicialização Básica (Roda apenas uma vez)
   useEffect(() => {
-    if (!mountRef.current) return;
+    if (!canvasRef.current) return;
 
     // 1. Setup da Cena
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xe2e8f0);
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(45, mountRef.current.clientWidth / mountRef.current.clientHeight, 0.1, 1000);
-    camera.position.set(8, 8, 8);
+    // 2. Camera e Renderer ligados diretamente ao <canvas> do React
+    const width = canvasRef.current.clientWidth || 500;
+    const height = canvasRef.current.clientHeight || 500;
+    
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(10, 10, 15);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    mountRef.current.appendChild(renderer.domElement);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, antialias: true });
+    renderer.setSize(width, height, false); // "false" impede de sobrescrever o CSS
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     rendererRef.current = renderer;
 
-    // 2. Controles de Mouse (OrbitControls)
+    // 3. Controles do Mouse
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; 
+    controls.enableDamping = true;
+    controlsRef.current = controls;
 
-    // 3. Iluminação
+    // 4. Iluminação e Grid
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(5, 10, 7);
     scene.add(directionalLight);
 
-    // 4. Grupo de Objetos
+    const grid = new THREE.GridHelper(30, 30, 0x94a3b8, 0xcbd5e1);
+    scene.add(grid);
+
+    // 5. Grupo onde vão o Caminhão e as Caixas
     const mainGroup = new THREE.Group();
     scene.add(mainGroup);
     groupRef.current = mainGroup;
 
-    // 5. Redimensionamento Automático
+    // 6. Atualizador de Tamanho da Tela Responsivo
     const handleResize = () => {
-      if (!mountRef.current) return;
-      const width = mountRef.current.clientWidth;
-      const height = mountRef.current.clientHeight;
-      camera.aspect = width / height;
+      if (!canvasRef.current) return;
+      const w = canvasRef.current.clientWidth;
+      const h = canvasRef.current.clientHeight;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      renderer.setSize(w, h, false);
     };
     window.addEventListener('resize', handleResize);
 
-    // 6. Loop de Renderização
+    // 7. Loop de Animação
+    let reqId;
     const animate = () => {
-      requestAnimationFrame(animate);
+      reqId = requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
     };
     animate();
 
-    updateMesh(veiculo, cargas);
-
+    // Limpeza ao sair da tela
     return () => {
+      cancelAnimationFrame(reqId);
       window.removeEventListener('resize', handleResize);
+      controls.dispose();
       renderer.dispose();
-      if (mountRef.current) mountRef.current.innerHTML = "";
     };
   }, []);
 
+  // Lógica de Atualização (Roda quando muda o veículo ou as cargas)
   useEffect(() => {
-    if (groupRef.current) updateMesh(veiculo, cargas);
-  }, [veiculo, cargas]);
+    if (!groupRef.current || !veiculo) return;
 
-  const updateMesh = (v, cs) => {
     const group = groupRef.current;
-    if (!group) return;
 
-    while(group.children.length > 0) {
+    // Limpa o caminhão e caixas velhas da tela
+    while (group.children.length > 0) {
       const obj = group.children[0];
       group.remove(obj);
-      if(obj.geometry) obj.geometry.dispose();
-      if(obj.material) obj.material.dispose();
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else obj.material.dispose();
+      }
     }
 
-    // 🎯 AQUI UTILIZAMOS AS VARIÁVEIS EXATAS DO BANCO DE DADOS (largura, altura, comprimento)
-    const bauGeo = new THREE.BoxGeometry(v.largura, v.altura, v.comprimento);
-    const bauMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, transparent: true, opacity: 0.1 });
+    // Pega as medidas do banco de dados de forma segura
+    const vLarg = Number(veiculo.largura) || 2;
+    const vAlt = Number(veiculo.altura) || 2;
+    const vComp = Number(veiculo.comprimento) || 2;
+
+    // Desenha o baú do caminhão
+    const bauGeo = new THREE.BoxGeometry(vLarg, vAlt, vComp);
+    const bauMat = new THREE.MeshStandardMaterial({ 
+      color: 0x3b82f6, 
+      transparent: true, 
+      opacity: 0.15,
+      depthWrite: false // Impede o vidro de esconder as caixas dentro dele
+    });
     const bau = new THREE.Mesh(bauGeo, bauMat);
-    bau.position.y = v.altura / 2;
+    bau.position.y = vAlt / 2;
     group.add(bau);
 
+    // Contorno do baú
     const edges = new THREE.EdgesGeometry(bauGeo);
-    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x1e40af, linewidth: 2 }));
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x1d4ed8, linewidth: 2 }));
     line.position.copy(bau.position);
     group.add(line);
 
-    // Grid no chão para referência
-    const grid = new THREE.GridHelper(10, 10, 0x94a3b8, 0xcbd5e1);
-    sceneRef.current.add(grid);
+    // 🟢 LÓGICA DE EMPILHAMENTO 3D (O "Tetris")
+    const GAP = 0.02; // 2cm de folga entre caixas
+    let curX = (-vLarg / 2) + GAP;
+    let curZ = (-vComp / 2) + GAP;
+    let curY = 0;
 
-    // Lógica de Empilhamento das cargas
-    let currentZ = -v.comprimento / 2;
-    cs.forEach(c => {
-      for(let i=0; i<c.qtd; i++) {
-        const item = new THREE.Mesh(
-          new THREE.BoxGeometry(c.larg * 0.98, c.alt * 0.98, c.comp * 0.98),
-          new THREE.MeshStandardMaterial({ color: c.cor, roughness: 0.4 })
-        );
-        item.position.set(0, c.alt/2, currentZ + c.comp/2);
+    let rowDepth = 0;
+    let layerHeight = 0;
+
+    cargas.forEach(c => {
+      for (let i = 0; i < c.qtd; i++) {
+        const cLarg = Number(c.larg) || 0.5;
+        const cAlt = Number(c.alt) || 0.5;
+        const cComp = Number(c.comp) || 0.5;
+
+        // Se bater na parede direita, cria fileira nova na frente
+        if (curX + cLarg > (vLarg / 2) - GAP + 0.01) {
+          curZ += rowDepth + GAP;
+          curX = (-vLarg / 2) + GAP;
+          rowDepth = 0;
+        }
+
+        // Se bater na porta do fundo do baú, sobe um andar (Y)
+        if (curZ + cComp > (vComp / 2) - GAP + 0.01) {
+          curY += layerHeight + GAP;
+          curZ = (-vComp / 2) + GAP;
+          curX = (-vLarg / 2) + GAP;
+          rowDepth = 0;
+          layerHeight = 0;
+        }
+
+        // Fica vermelho e transparente se passar do teto do caminhão
+        const isOverflow = (curY + cAlt > vAlt);
+        const corCaixa = isOverflow ? '#ef4444' : c.cor;
+
+        const itemGeo = new THREE.BoxGeometry(cLarg * 0.98, cAlt * 0.98, cComp * 0.98);
+        const itemMat = new THREE.MeshStandardMaterial({ 
+          color: corCaixa, 
+          roughness: 0.4,
+          transparent: isOverflow,
+          opacity: isOverflow ? 0.7 : 1
+        });
+        const item = new THREE.Mesh(itemGeo, itemMat);
+
+        item.position.set(curX + (cLarg / 2), curY + (cAlt / 2), curZ + (cComp / 2));
+
+        // Contorno nas caixas
+        const itemEdges = new THREE.EdgesGeometry(itemGeo);
+        const itemLine = new THREE.LineSegments(itemEdges, new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 }));
+        item.add(itemLine);
+
         group.add(item);
-        currentZ += c.comp; // Avança o eixo Z com base no comprimento da carga
+
+        rowDepth = Math.max(rowDepth, cComp);
+        layerHeight = Math.max(layerHeight, cAlt);
+        curX += cLarg + GAP; 
       }
     });
-  };
 
-  return <div ref={mountRef} className="scene-container-3d" />;
+    // Câmera Inteligente
+    if (cameraRef.current && controlsRef.current) {
+      const maxDim = Math.max(vComp, vLarg, vAlt);
+      cameraRef.current.position.set(maxDim * 1.5, maxDim * 1.0, maxDim * 1.5);
+      controlsRef.current.target.set(0, vAlt / 2, 0); 
+      controlsRef.current.update();
+    }
+
+  }, [veiculo, cargas]); 
+
+  // 🟢 A SOLUÇÃO DEFINITIVA: Usando a tag nativa <canvas>
+  return (
+    <canvas 
+      ref={canvasRef} 
+      className="scene-container-3d" 
+      style={{ display: 'block', width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} 
+    />
+  );
 }
