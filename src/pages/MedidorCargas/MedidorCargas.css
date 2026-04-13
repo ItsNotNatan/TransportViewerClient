@@ -24,7 +24,9 @@
 
   display: flex; 
   flex-direction: column; 
-  height: 100vh;
+  /* 👇 AJUSTE AQUI: Desconta o tamanho do menu e empurra para baixo */
+  height: calc(100vh - 70px);
+  margin-top: 70px;
   width: 100%;
   overflow: hidden;
   background: var(--bg);
@@ -96,7 +98,8 @@
 .medidor-wrapper-3d .layout {
   display: flex;
   flex: 1;
-  height: calc(100vh - 52px);
+  /* 👇 AJUSTE AQUI: O layout agora ocupa 100% da altura disponível no wrapper */
+  height: calc(100% - 52px);
 }
 
 .medidor-wrapper-3d .sidebar {
@@ -407,3 +410,67 @@
 .modal-footer-3d { padding: 20px 25px; background: #f8fafc; border-top: 1px solid var(--border); }
 .btn-finalizar-3d { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; font-weight: 800; cursor: pointer; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; transition: background 0.2s; }
 .btn-finalizar-3d:hover { background: var(--accent2); }
+
+/* =========================================
+   TELA DE CARREGAMENTO (LOADING)
+   ========================================= */
+.medidor-loading-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg);
+  z-index: 9999;
+  font-family: 'Inter', sans-serif;
+}
+
+.medidor-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background-color: var(--panel);
+  padding: 40px 60px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  border: 1px solid var(--border);
+  animation: acompFadeIn 0.4s ease-out forwards;
+}
+
+.medidor-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--border);
+  border-top: 4px solid var(--accent);
+  border-radius: 50%;
+  margin-bottom: 24px;
+  animation: spin 1s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
+
+.medidor-loading-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text);
+  text-transform: uppercase;
+  margin: 0 0 8px 0;
+}
+
+.medidor-loading-text {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes acompFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

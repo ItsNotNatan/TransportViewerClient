@@ -167,11 +167,6 @@ export default function RequestForm() {
               placeholder="(00) 00000-0000" 
             />
           </div>
-          {/* 👇 NOVO CAMPO: Número Reserva 👇 */}
-          <div className="input-group">
-            <label>Número Reserva</label>
-            <input type="text" name="numeroReserva" className="input-control" placeholder="Nº da reserva (Opcional)" />
-          </div>
         </div>
 
         {/* SEÇÃO 2: ROTA E PRAZOS */}

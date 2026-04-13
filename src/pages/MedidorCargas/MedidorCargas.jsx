@@ -445,7 +445,19 @@ export default function MedidorCargas() {
     tState.panY = mesh.position.y; updateCam();
   };
 
-  if (carregando) return <div style={{ color: 'var(--text)', padding: 20 }}>Carregando Motor 3D e Frota...</div>;
+  // 👇 TELA DE CARREGAMENTO APLICADA AQUI 👇
+  if (carregando) {
+    return (
+      <div className="medidor-loading-screen">
+        <div className="medidor-loading-content">
+          <div className="medidor-spinner"></div>
+          <h2 className="medidor-loading-title">Inicializando Motor 3D</h2>
+          <p className="medidor-loading-text">Carregando frota de veículos e modelos físicos...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!veiculosBD || veiculosBD.length === 0) return <div style={{ color: 'var(--text)', padding: 20 }}>Nenhum veículo cadastrado no sistema.</div>;
 
   const actVeh = veiculosBD.find(x => x.id === selVeh);
@@ -717,7 +729,7 @@ function ModalRelatorio({ veiculo, cargas, ocupacao, onClose }) {
             {cargas.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--muted)' }}>Nenhuma carga adicionada.</p> : cargas.map(c => (
               <div key={c.id} className="modal-table-row">
                   <div className="item-with-dot">
-                    <div className="item-dot" style={{ backgroundColor: c.color }}></div>
+                    <div className="item-dot" style={{ backgroundColor: c.color, width: '10px', height: '10px', borderRadius: '50%' }}></div>
                     <span>{c.name}</span>
                   </div>
                   <strong>{c.qty} un.</strong>
