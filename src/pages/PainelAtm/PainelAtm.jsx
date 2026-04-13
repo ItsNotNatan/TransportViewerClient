@@ -105,7 +105,8 @@ export default function PainelAtm() {
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Rota</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Veículo</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Transportadora</th>
-                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Valor Frete</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Valor Previsto</th>
+                <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Valor Realizado</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb' }}>Status</th>
                 <th style={{ backgroundColor: '#f3f4f6', padding: '12px', borderBottom: '2px solid #e5e7eb', textAlign: 'center' }}>Ações</th>
               </tr>
@@ -113,9 +114,9 @@ export default function PainelAtm() {
             
             <tbody>
               {carregando ? (
-                <tr><td colSpan="10" className="text-center" style={{padding: '3rem'}}>Carregando seus pedidos...</td></tr>
+                <tr><td colSpan="11" className="text-center" style={{padding: '3rem'}}>Carregando seus pedidos...</td></tr>
               ) : atmsExibidos.length === 0 ? (
-                <tr><td colSpan="10" className="text-center" style={{padding: '3rem', color: '#6b7280'}}>Nenhum pedido encontrado.</td></tr>
+                <tr><td colSpan="11" className="text-center" style={{padding: '3rem', color: '#6b7280'}}>Nenhum pedido encontrado.</td></tr>
               ) : atmsExibidos.map((atm) => (
                 <tr key={atm.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td className="font-bold" title={atm.id}>#{shortId(atm.id)}</td>
@@ -129,6 +130,7 @@ export default function PainelAtm() {
                   <td>{atm.veiculo}</td>
                   <td style={{ fontWeight: '500' }}>{atm.transportadora?.nome || <span style={{color: '#9ca3af'}}>A Definir</span>}</td>
                   <td style={{ color: '#059669', fontWeight: 'bold' }}>{formatarMoeda(atm.valor || atm.valor_nf)}</td>
+                  <td style={{ textAlign: 'center', color: '#6b7280' }}>-</td>
                   <td><span className={`badge ${getStatusClass(atm.status)}`}>{atm.status}</span></td>
                   <td style={{ textAlign: 'center' }}>
                     <button className="btn-action" onClick={() => setSelectedAtm(atm)} style={{ padding: '6px 12px' }}>
@@ -201,7 +203,8 @@ export default function PainelAtm() {
                   <h4>Carga e Logística</h4>
                   <ul>
                     <li><span>Transportadora:</span> <strong>{selectedAtm.transportadora?.nome || 'A Definir'}</strong></li>
-                    <li><span>Valor do Frete:</span> <strong style={{ color: '#059669' }}>{formatarMoeda(selectedAtm.valor || selectedAtm.valor_nf)}</strong></li>
+                    <li><span>Valor Previsto:</span> <strong style={{ color: '#059669' }}>{formatarMoeda(selectedAtm.valor || selectedAtm.valor_nf)}</strong></li>
+                    <li><span>Valor Realizado:</span> <strong style={{ color: '#6b7280' }}>-</strong></li>
                     <li><span>Tipo de Veículo:</span> <strong>{selectedAtm.veiculo || 'Não informado'}</strong></li>
                     <li><span>Tipo de Frete:</span> <strong>{selectedAtm.tipo_frete || 'Não informado'}</strong></li>
                     <li><span>Peso Estimado:</span> <strong>{selectedAtm.peso ? `${selectedAtm.peso} kg` : 'Não informado'}</strong></li>

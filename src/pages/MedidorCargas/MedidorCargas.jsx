@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import api from '../../services/api';
 import './MedidorCargas.css';
 
-// Importando os módulos que separamos!
 import { VEHICLES, PALETTE } from './constants';
 import { buildVehicle, placeCargos } from './engine3D';
 
@@ -12,12 +11,10 @@ export default function MedidorCargas() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Routing e API states
   const [veiculosBD, setVeiculosBD] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [showRelatorio, setShowRelatorio] = useState(false);
 
-  // App / UI States
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const selBarWrapperRef = useRef(null);
@@ -33,7 +30,6 @@ export default function MedidorCargas() {
   const panelRefs = useRef({});
   const selBarRefs = useRef({ sx: null, sy: null, sz: null, sn: null });
 
-  // ThreeJS Mutable Engine State
   const tState = useRef({
     scene: null, cam: null, renderer: null, raycaster: null,
     vehGrp: null, cargoGrp: null,
@@ -44,12 +40,10 @@ export default function MedidorCargas() {
     selCid: null, mode: 'orbit', selVeh: null
   }).current;
 
-  // Sync React State to Engine
   useEffect(() => { tState.selCid = selCid; }, [selCid]);
   useEffect(() => { tState.mode = mode; }, [mode]);
   useEffect(() => { tState.selVeh = selVeh; }, [selVeh]);
 
-  // Fetch Veículos
   useEffect(() => {
     const fetchVeiculos = async () => {
       try {
@@ -76,15 +70,11 @@ export default function MedidorCargas() {
         });
 
         setVeiculosBD(veiculosFormatados);
-        if (veiculosFormatados.length > 0) {
-          setSelVeh(veiculosFormatados[0].id);
-        }
+        if (veiculosFormatados.length > 0) setSelVeh(veiculosFormatados[0].id);
       } catch (error) {
         console.error("Erro ao buscar veículos, usando fallback:", error);
         setVeiculosBD(VEHICLES);
-        if (VEHICLES.length > 0) {
-           setSelVeh(VEHICLES[0].id);
-        }
+        if (VEHICLES.length > 0) setSelVeh(VEHICLES[0].id);
       } finally {
         setCarregando(false);
       }
@@ -99,7 +89,6 @@ export default function MedidorCargas() {
     }
   }, [location]);
 
-  // ─── UTILS ──────────────────────────────────────────────────────────────────
   const toM = (v) => unit === 'cm' ? v / 100 : v;
   const fmt = (v) => unit === 'm' ? v.toFixed(2) + 'm' : (v * 100).toFixed(0) + 'cm';
   const totalVol = () => cargos.reduce((s, c) => s + c.l * c.w * c.h * c.qty, 0);
@@ -164,13 +153,14 @@ export default function MedidorCargas() {
     updateCam();
   };
 
-  // ─── THREEJS SETUP ──────────────────────────────────────────────────────────
+  // ─── THREEJS SETUP (Configurações de Luz para Modo Claro) ───────────────
   useEffect(() => {
     if (tState.scene || !canvasRef.current || !wrapRef.current || carregando) return;
 
     tState.scene = new THREE.Scene();
-    tState.scene.background = new THREE.Color(0x060910);
-    tState.scene.fog = new THREE.FogExp2(0x060910, 0.009);
+    // 🟢 Novo fundo: Cinza super claro ao invés de quase preto
+    tState.scene.background = new THREE.Color(0xf1f5f9);
+    tState.scene.fog = new THREE.FogExp2(0xf1f5f9, 0.009);
 
     tState.cam = new THREE.PerspectiveCamera(40, wrapRef.current.clientWidth / wrapRef.current.clientHeight, 0.05, 600);
     updateCam();
@@ -181,12 +171,13 @@ export default function MedidorCargas() {
     tState.renderer.shadowMap.enabled = true;
     tState.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     tState.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    tState.renderer.toneMappingExposure = 1.18;
+    tState.renderer.toneMappingExposure = 1.0; // Reduzido levemente por ser claro
 
     tState.raycaster = new THREE.Raycaster();
 
-    tState.scene.add(new THREE.AmbientLight(0xccddf0, 0.5));
-    const sun = new THREE.DirectionalLight(0xfffaf0, 3.2);
+    // 🟢 Luzes Ajustadas para Modo Claro
+    tState.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.0);
     sun.position.set(30, 55, 25);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -195,14 +186,15 @@ export default function MedidorCargas() {
     sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
     tState.scene.add(sun);
     
-    const fill = new THREE.DirectionalLight(0x88aaee, 0.65);
+    const fill = new THREE.DirectionalLight(0xffffff, 1.2);
     fill.position.set(-25, 15, -20); tState.scene.add(fill);
-    tState.scene.add(new THREE.HemisphereLight(0x445566, 0x111122, 0.5));
+    tState.scene.add(new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 0.8));
 
-    const grid = new THREE.GridHelper(160, 100, 0x192438, 0x101c2e);
+    // 🟢 Grid modificado para cores mais claras
+    const grid = new THREE.GridHelper(160, 100, 0x94a3b8, 0xcbd5e1);
     tState.scene.add(grid);
     
-    const fMesh = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), new THREE.ShadowMaterial({ opacity: 0.28 }));
+    const fMesh = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), new THREE.ShadowMaterial({ opacity: 0.1 }));
     fMesh.rotation.x = -Math.PI / 2; fMesh.receiveShadow = true;
     tState.scene.add(fMesh);
 
@@ -218,7 +210,6 @@ export default function MedidorCargas() {
     };
     loop();
 
-    // ResizeObserver resolve o bug do canvas ficar pequeno
     const handleResize = () => {
       if (!wrapRef.current || !tState.cam || !tState.renderer) return;
       const width = wrapRef.current.clientWidth;
@@ -238,7 +229,6 @@ export default function MedidorCargas() {
     };
   }, [updateCam, carregando, tState]);
 
-  // ─── SCENE BUILDING ─────────────────────────────────────────────────────────
   const buildScene = useCallback(() => {
     if (!tState.scene || !tState.vehGrp || !tState.cargoGrp) return;
     while (tState.vehGrp.children.length) tState.vehGrp.remove(tState.vehGrp.children[0]);
@@ -252,7 +242,7 @@ export default function MedidorCargas() {
 
     if (selCid !== null) {
       const mesh = getSelMesh(selCid);
-      if (mesh) { mesh.material.emissive.setHex(0x001a2a); syncPanel(mesh); updateSelBar(mesh); }
+      if (mesh) { mesh.material.emissive.setHex(0x222222); syncPanel(mesh); updateSelBar(mesh); }
     } else {
       updateSelBar(null);
     }
@@ -260,7 +250,6 @@ export default function MedidorCargas() {
   
   useEffect(() => { buildScene(); }, [selVeh, cargos, buildScene]);
 
-  // ─── EVENT HANDLERS ─────────────────────────────────────────────────────────
   const getNDC = (e) => {
     const r = tState.renderer.domElement.getBoundingClientRect();
     return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
@@ -337,11 +326,11 @@ export default function MedidorCargas() {
       const obj = hit ? hit.object : null;
       if (obj !== tState.hovered) {
         if (tState.hovered && tState.hovered.userData.cid !== tState.selCid) {
-          tState.hovered.material.emissive.setHex(tState.hovered.userData.inBay ? 0 : 0x380000);
+          tState.hovered.material.emissive.setHex(tState.hovered.userData.inBay ? 0x000000 : 0x440000);
         }
         tState.hovered = (obj && obj.userData.movable) ? obj : null;
         if (tState.hovered && tState.hovered.userData.cid !== tState.selCid) {
-          tState.hovered.material.emissive.setHex(0x0a1a0a);
+          tState.hovered.material.emissive.setHex(0x111111);
         }
         if (canvasRef.current) canvasRef.current.style.cursor = tState.hovered ? 'grab' : 'crosshair';
       }
@@ -363,8 +352,8 @@ export default function MedidorCargas() {
     if (!tState.cargoGrp) return;
     tState.cargoGrp.children.forEach(c => {
       if (c.isMesh && c.userData.movable) {
-        if (c.userData.cid === selCid) c.material.emissive.setHex(0x001a2a);
-        else c.material.emissive.setHex(c.userData.inBay ? 0 : 0x380000);
+        if (c.userData.cid === selCid) c.material.emissive.setHex(0x222222);
+        else c.material.emissive.setHex(c.userData.inBay ? 0x000000 : 0x440000);
       }
     });
   }, [selCid, tState]);
@@ -372,12 +361,11 @@ export default function MedidorCargas() {
   useEffect(() => {
     if (canvasRef.current) canvasRef.current.style.cursor = mode === 'drag' ? 'crosshair' : 'default';
     if (mode === 'orbit' && tState.hovered) {
-      if (tState.hovered.userData.cid !== selCid) tState.hovered.material.emissive.setHex(tState.hovered.userData.inBay ? 0 : 0x380000);
+      if (tState.hovered.userData.cid !== selCid) tState.hovered.material.emissive.setHex(tState.hovered.userData.inBay ? 0x000000 : 0x440000);
       tState.hovered = null;
     }
   }, [mode, selCid, tState]);
 
-  // ─── UI LOGIC ───────────────────────────────────────────────────────────────
   const checkFit = (v) => {
     if (!cargos.length) return '';
     const vol = totalVol();
@@ -421,7 +409,6 @@ export default function MedidorCargas() {
     const mesh = getSelMesh(cid);
     if (!mesh) return;
     
-    // getGC importado de constants.js!
     const gc = require('./constants').getGC(v.type);
     const hw = v.L / 2, hd = v.W / 2;
     const chl = mesh.geometry.parameters.width / 2;
@@ -458,8 +445,8 @@ export default function MedidorCargas() {
     tState.panY = mesh.position.y; updateCam();
   };
 
-  if (carregando) return <div style={{ color: 'white', padding: 20 }}>Carregando Motor 3D e Frota...</div>;
-  if (!veiculosBD || veiculosBD.length === 0) return <div style={{ color: 'white', padding: 20 }}>Nenhum veículo cadastrado no sistema.</div>;
+  if (carregando) return <div style={{ color: 'var(--text)', padding: 20 }}>Carregando Motor 3D e Frota...</div>;
+  if (!veiculosBD || veiculosBD.length === 0) return <div style={{ color: 'var(--text)', padding: 20 }}>Nenhum veículo cadastrado no sistema.</div>;
 
   const actVeh = veiculosBD.find(x => x.id === selVeh);
   const vVol = totalVol();
@@ -477,12 +464,11 @@ export default function MedidorCargas() {
   return (
     <div className="medidor-wrapper-3d">
       <header className="header-top">
-        <div className="logo-txt">
-          <button onClick={() => navigate(-1)} className="btn-voltar" title="Voltar">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            VOLTAR
+        <div className="logo">
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center' }} title="Voltar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <span>CARGO<em>FIT</em> <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 400, letterSpacing: '1px', marginLeft: '3px' }}>3D</span></span>
+          <span>CARGO<em>FIT</em> <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 600, letterSpacing: '1px', marginLeft: '3px' }}>3D</span></span>
         </div>
         <div className="hrtags">
           <span className="tag tag-b">VISUALIZAÇÃO 3D</span>
@@ -503,7 +489,7 @@ export default function MedidorCargas() {
 
             <div className="sec">
               <div className="stitle">Nova Carga</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div className="field">
                   <label>Nome</label>
                   <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Pallet A" />
@@ -541,8 +527,8 @@ export default function MedidorCargas() {
             <div className="sec">
               <div className="stitle">
                 Cargas
-                <span id="cnt" style={{ background: 'var(--accent)', color: '#000', padding: '1px 7px', borderRadius: '10px', fontSize: '0.56rem' }}>{cargos.length}</span>
-                <span style={{ color: 'var(--muted)', fontSize: '0.56rem', marginLeft: 'auto', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>Clique para posicionar</span>
+                <span id="cnt" style={{ background: 'var(--accent)', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontSize: '0.6rem' }}>{cargos.length}</span>
+                <span style={{ color: 'var(--muted)', fontSize: '0.6rem', marginLeft: 'auto', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Clique para posicionar</span>
               </div>
               <div className="clist">
                 {cargos.length === 0 ? (
@@ -569,7 +555,7 @@ export default function MedidorCargas() {
                           <div className="pp-title">📍 Posição Manual</div>
                           <div className="pp-grid">
                             <div className="pp-field">
-                              <label style={{ color: '#ff8866' }}>Eixo X</label>
+                              <label style={{ color: 'var(--red)' }}>Eixo X</label>
                               <div className="pp-iw">
                                 <input type="number" defaultValue="0" step="0.05" onChange={() => applyPos(c.id)} ref={el => { if (!panelRefs.current[c.id]) panelRefs.current[c.id] = {}; panelRefs.current[c.id].px = el; }} />
                                 <span className="pp-suf">m</span>
@@ -580,7 +566,7 @@ export default function MedidorCargas() {
                               </div>
                             </div>
                             <div className="pp-field">
-                              <label style={{ color: '#88ff88' }}>Eixo Y</label>
+                              <label style={{ color: 'var(--green)' }}>Eixo Y</label>
                               <div className="pp-iw">
                                 <input type="number" defaultValue="0" step="0.05" onChange={() => applyPos(c.id)} ref={el => { if (!panelRefs.current[c.id]) panelRefs.current[c.id] = {}; panelRefs.current[c.id].py = el; }} />
                                 <span className="pp-suf">m</span>
@@ -591,7 +577,7 @@ export default function MedidorCargas() {
                               </div>
                             </div>
                             <div className="pp-field">
-                              <label style={{ color: '#66aaff' }}>Eixo Z</label>
+                              <label style={{ color: 'var(--accent)' }}>Eixo Z</label>
                               <div className="pp-iw">
                                 <input type="number" defaultValue="0" step="0.05" onChange={() => applyPos(c.id)} ref={el => { if (!panelRefs.current[c.id]) panelRefs.current[c.id] = {}; panelRefs.current[c.id].pz = el; }} />
                                 <span className="pp-suf">m</span>
@@ -614,7 +600,7 @@ export default function MedidorCargas() {
               </div>
             </div>
 
-            <div className="sec" style={{ paddingBottom: '18px' }}>
+            <div className="sec" style={{ paddingBottom: '30px' }}>
               <div className="stitle">Veículo</div>
               <div className="vgrid">
                 {veiculosBD.map(v => (
@@ -685,7 +671,7 @@ export default function MedidorCargas() {
           {selVeh && (
             <div className="statsbar">
               <div className="stat"><div className="sl">Vol. Cargas</div><div className="sv">{vVol.toFixed(3)} m³</div></div>
-              <div className="stat"><div className="sl">Vol. Baú</div><div className="sv">{actVeh.vol || vBv.toFixed(1)} m³</div></div>
+              <div className="stat"><div className="sl">Vol. Baú</div><div className="sv">{actVeh.vol ? actVeh.vol.toFixed(1) : vBv.toFixed(1)} m³</div></div>
               <div className="occ">
                 <div className="occ-row">
                   <span className="sl">Ocupação</span>
@@ -706,7 +692,7 @@ export default function MedidorCargas() {
   );
 }
 
-function ModalRelatorio({ veiculo, cargas, volumeTotal, ocupacao, onClose }) {
+function ModalRelatorio({ veiculo, cargas, ocupacao, onClose }) {
   if (!veiculo) return null;
   return (
     <div className="modal-overlay-3d">
@@ -724,11 +710,11 @@ function ModalRelatorio({ veiculo, cargas, volumeTotal, ocupacao, onClose }) {
             </div>
             <div className="summary-card-3d">
               <p className="summary-label">Ocupação Volumétrica</p>
-              <p className="summary-value" style={{ color: ocupacao > 100 ? '#ff4444' : '#00e676' }}>{ocupacao}%</p>
+              <p className="summary-value" style={{ color: ocupacao > 100 ? 'var(--red)' : 'var(--green)' }}>{ocupacao}%</p>
             </div>
           </div>
           <div className="modal-table-container">
-            {cargas.length === 0 ? <p className="modal-table-empty">Nenhuma carga adicionada.</p> : cargas.map(c => (
+            {cargas.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--muted)' }}>Nenhuma carga adicionada.</p> : cargas.map(c => (
               <div key={c.id} className="modal-table-row">
                   <div className="item-with-dot">
                     <div className="item-dot" style={{ backgroundColor: c.color }}></div>
