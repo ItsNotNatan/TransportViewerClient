@@ -366,12 +366,14 @@ export default function MedidorCargas() {
     
     if (tState.orbiting) {
       tState.theta -= dx * 0.007;
-      tState.phi = Math.max(0.04, Math.min(Math.PI / 2 - 0.03, tState.phi + dy * 0.007));
+      tState.phi = Math.max(0.04, Math.min(Math.PI / 2 - 0.03, tState.phi - dy * 0.007));
       updateCam();
     }
     if (tState.panning) {
       const s = tState.radius * 0.0014;
-      tState.panX -= dx * s; tState.panY += dy * s; updateCam();
+      tState.panX -= dx * s; 
+      tState.panY -= dy * s; 
+      updateCam();
     }
     
     if (tState.mode === 'drag') {
