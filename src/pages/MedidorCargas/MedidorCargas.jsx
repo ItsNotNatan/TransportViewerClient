@@ -259,7 +259,38 @@ export default function MedidorCargas() {
     const hits = tState.raycaster.intersectObjects(meshes, false);
     return hits.length ? hits[0] : null;
   };
-  
+
+  // ─── 🛡️ LÓGICA DE COLISÃO AABB ───────────────
+  const checkCollision = (mesh, newX, newY, newZ) => {
+    // Cria a caixa invisível
+    const boxA = new THREE.Box3().setFromObject(mesh);
+    
+    // Calcula para onde ela vai
+    const dx = newX - mesh.position.x;
+    const dy = newY - mesh.position.y;
+    const dz = newZ - mesh.position.z;
+
+    // Move a caixa invisível
+    boxA.translate(new THREE.Vector3(dx, dy, dz));
+    
+    // Contrai a caixa 1 milímetro para não engatar borda com borda
+    boxA.expandByScalar(-0.001); 
+
+    // Checa contra todas as outras caixas
+    for (let i = 0; i < tState.cargoGrp.children.length; i++) {
+      const other = tState.cargoGrp.children[i];
+      if (other.isMesh && other.userData.movable && other.uuid !== mesh.uuid) {
+        const boxB = new THREE.Box3().setFromObject(other);
+        boxB.expandByScalar(-0.001); 
+        
+        if (boxA.intersectsBox(boxB)) {
+          return true; // Colisão detectada!
+        }
+      }
+    }
+    return false; // Caminho livre
+  };
+
   const onMD = (e) => {
     tState.lastMX = e.clientX; tState.lastMY = e.clientY;
     if (tState.mode === 'drag') {
@@ -283,6 +314,7 @@ export default function MedidorCargas() {
     }
   };
 
+  // ─── 🔄 MOVIMENTO DO MOUSE ATUALIZADO ───────────────
   const onMM = (e) => {
     const dx = e.clientX - tState.lastMX;
     const dy = e.clientY - tState.lastMY;
@@ -291,15 +323,38 @@ export default function MedidorCargas() {
     if (tState.dragging && tState.dragObj) {
       tState.raycaster.setFromCamera(getNDC(e), tState.cam);
       const pt = new THREE.Vector3();
+      
       if (tState.raycaster.ray.intersectPlane(tState.dragPlane, pt)) {
         const v = veiculosBD.find(x => x.id === tState.selVeh);
         if (!v) return;
-        const newX = pt.x - tState.dragOff.x; const newZ = pt.z - tState.dragOff.z;
+        
+        const proposedX = pt.x - tState.dragOff.x; 
+        const proposedZ = pt.z - tState.dragOff.z;
+        
+        // Limites das paredes do caminhão
         const hw = v.L / 2, hd = v.W / 2;
         const chl = tState.dragObj.geometry.parameters.width / 2;
         const chd = tState.dragObj.geometry.parameters.depth / 2;
-        tState.dragObj.position.x = Math.max(-hw + chl, Math.min(hw - chl, newX));
-        tState.dragObj.position.z = Math.max(-hd + chd, Math.min(hd - chd, newZ));
+        
+        const clampedX = Math.max(-hw + chl, Math.min(hw - chl, proposedX));
+        const clampedZ = Math.max(-hd + chd, Math.min(hd - chd, proposedZ));
+
+        let finalX = tState.dragObj.position.x;
+        let finalZ = tState.dragObj.position.z;
+
+        // Tenta mover no eixo X
+        if (!checkCollision(tState.dragObj, clampedX, tState.dragObj.position.y, finalZ)) {
+          finalX = clampedX;
+        }
+
+        // Tenta mover no eixo Z
+        if (!checkCollision(tState.dragObj, finalX, tState.dragObj.position.y, clampedZ)) {
+          finalZ = clampedZ;
+        }
+
+        tState.dragObj.position.x = finalX;
+        tState.dragObj.position.z = finalZ;
+        
         syncEdges(tState.dragObj);
         const key = tState.dragObj.userData.posKey;
         if (key) tState.posOv[key] = { x: tState.dragObj.position.x, y: tState.dragObj.position.y, z: tState.dragObj.position.z };
@@ -374,7 +429,6 @@ export default function MedidorCargas() {
     return 'ok';
   };
   
-  // Função que será chamada pelo componente CargoForm
   const handleAddCargo = (novaCarga) => {
     tState.nextId++;
     setCargos([...cargos, { 
@@ -413,9 +467,12 @@ export default function MedidorCargas() {
     const chl = mesh.geometry.parameters.width / 2;
     const chv = mesh.geometry.parameters.height / 2;
     const chd = mesh.geometry.parameters.depth / 2;
-    mesh.position.x = Math.max(-hw + chl, Math.min(hw - chl, px));
-    mesh.position.y = Math.max(gc + chv, Math.min(gc + v.H - chv, py));
-    mesh.position.z = Math.max(-hd + chd, Math.min(hd - chd, pz));
+    
+    const newX = Math.max(-hw + chl, Math.min(hw - chl, px));
+    const newY = Math.max(gc + chv, Math.min(gc + v.H - chv, py));
+    const newZ = Math.max(-hd + chd, Math.min(hd - chd, pz));
+
+    mesh.position.set(newX, newY, newZ);
     syncEdges(mesh);
 
     const key = mesh.userData.posKey;
@@ -473,13 +530,23 @@ export default function MedidorCargas() {
 
   return (
     <div className="medidor-wrapper-3d">
-
+      <header className="header-top">
+        <div className="logo">
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center' }} title="Voltar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span>CARGO<em>FIT</em> <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 600, letterSpacing: '1px', marginLeft: '3px' }}>3D</span></span>
+        </div>
+        <div className="hrtags">
+          <span className="tag tag-b">VISUALIZAÇÃO 3D</span>
+          <span className="tag tag-o" onClick={() => setShowRelatorio(true)}>📄 VER MANIFESTO</span>
+        </div>
+      </header>
 
       <div className="layout">
         <aside className="sidebar">
           <div className="sb-scroll">
             
-            {/* Unidade de Medida */}
             <div className="sec">
               <div className="stitle">Unidade de Medida</div>
               <div className="urow">
@@ -488,10 +555,8 @@ export default function MedidorCargas() {
               </div>
             </div>
 
-            {/* Componente Extraído: Formulário de Nova Carga */}
             <CargoForm unit={unit} onAddCargo={handleAddCargo} />
 
-            {/* Lista de Cargas (Mantida aqui por compartilhar refs da UI 3D) */}
             <div className="sec">
               <div className="stitle">
                 Cargas
@@ -519,7 +584,6 @@ export default function MedidorCargas() {
                             <button className="ci-act ci-del" onClick={(e) => { e.stopPropagation(); handleDelCargo(c.id); }} title="Remover">✕</button>
                           </div>
                         </div>
-                        {/* Detalhes de posição abertos quando selecionado */}
                         <div className="pp" onClick={(e) => e.stopPropagation()}>
                           <div className="pp-title">📍 Posição Manual</div>
                           <div className="pp-grid">
@@ -549,22 +613,77 @@ export default function MedidorCargas() {
               </div>
             </div>
 
-            {/* Componente Extraído: Lista de Veículos */}
             <VehicleGrid veiculos={veiculosBD} selVeh={selVeh} onSelectVeh={handleSelectVeh} checkFit={checkFit} />
 
           </div>
         </aside>
 
-        {/* ... Canvas 3D e View (Sem alterações estruturais) ... */}
         <div className="main-view">
-          {/* ... */}
+          <div className="topbar">
+            <div>
+              <div className="veh-lbl">{actVeh ? actVeh.name : 'Selecione um veículo →'}</div>
+              <div className="veh-sub">{actVeh ? `Baú: ${actVeh.L}m × ${actVeh.W}m × ${actVeh.H}m  |  Vol: ${actVeh.vol ? actVeh.vol.toFixed(1) + ' m³' : '2 compartimentos'}` : 'Escolha na lista à esquerda'}</div>
+            </div>
+            <div className={`chip ${fChipCls}`}>{fChip}</div>
+          </div>
+
           <div id="cwrap" ref={wrapRef}>
             <canvas id="c" tabIndex={0} ref={canvasRef}
               onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU} onWheel={onWheel}
               onContextMenu={e => e.preventDefault()} />
-              {/* Controles de Câmera */}
+
+            {!selVeh && (
+              <div className="hint"><h3>🚛 VISUALIZAÇÃO 3D</h3><p>Adicione cargas e selecione um veículo</p></div>
+            )}
+
+            {selVeh && (
+              <>
+                <div className="modebar">
+                  <button className={`mbtn ${mode === 'orbit' ? 'on' : ''}`} onClick={() => setMode('orbit')}>⟳ Girar Câmera</button>
+                  <div className="msep"></div>
+                  <button className={`mbtn ${mode === 'drag' ? 'on' : ''}`} onClick={() => setMode('drag')}>✥ Arrastar Carga</button>
+                </div>
+
+                <div className="info">
+                  <b>Girar:</b> Arrastar<br />
+                  <b>Zoom:</b> Scroll<br />
+                  <b>Pan:</b> Btn direito<br />
+                  <b>Arrastar carga:</b> Modo ✥
+                </div>
+
+                <div className="cambtns">
+                  <div className="cbtn" onClick={resetCam} title="Reset">⟳</div>
+                  <div className="cbtn" onClick={() => setView('top')} title="Topo">⊤</div>
+                  <div className="cbtn" onClick={() => setView('front')} title="Frontal">▣</div>
+                  <div className="cbtn" onClick={() => setView('side')} title="Lateral">◧</div>
+                </div>
+
+                <div className="selbar" ref={selBarWrapperRef}>
+                  <span className="sn" ref={el => selBarRefs.current.sn = el}>—</span>
+                  <div className="sc">
+                    <span>X:<span className="sx" ref={el => selBarRefs.current.sx = el}>0</span></span>
+                    <span>Y:<span className="sy" ref={el => selBarRefs.current.sy = el}>0</span></span>
+                    <span>Z:<span className="sz" ref={el => selBarRefs.current.sz = el}>0</span></span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-          {/* ... */}
+
+          {selVeh && (
+            <div className="statsbar">
+              <div className="stat"><div className="sl">Vol. Cargas</div><div className="sv">{vVol.toFixed(3)} m³</div></div>
+              <div className="stat"><div className="sl">Vol. Baú</div><div className="sv">{actVeh.vol ? actVeh.vol.toFixed(1) : vBv.toFixed(1)} m³</div></div>
+              <div className="occ">
+                <div className="occ-row">
+                  <span className="sl">Ocupação</span>
+                  <span className={`sv ${fCls}`} style={{ fontSize: '0.88rem' }}>{Math.min(200, vPct)}%</span>
+                </div>
+                <div className="occ-track"><div className="occ-fill" style={{ width: `${Math.min(100, vPct)}%`, background: fBg }}></div></div>
+              </div>
+              <div className="stat"><div className="sl">Status</div><div className={`sv ${fCls}`}>{fSv}</div></div>
+            </div>
+          )}
         </div>
       </div>
 
