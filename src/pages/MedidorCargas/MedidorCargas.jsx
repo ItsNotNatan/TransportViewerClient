@@ -2,10 +2,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import * as THREE from 'three';
-import api from '../../services/api';
 import './MedidorCargas.css';
 
-import { VEHICLES } from '../../components/CargoForm/constants';
+// Usamos as constantes locais em vez do banco
+import { VEHICLES, getGC } from '../../components/CargoForm/constants';
 import { buildVehicle, placeCargos } from './engine3D';
 
 // Componentes modulares
@@ -48,42 +48,11 @@ export default function MedidorCargas() {
   useEffect(() => { tState.mode = mode; }, [mode]);
   useEffect(() => { tState.selVeh = selVeh; }, [selVeh]);
 
+  // 1. CARREGAMENTO LOCAL INSTANTÂNEO SEM API
   useEffect(() => {
-    const fetchVeiculos = async () => {
-      try {
-        const response = await api.get('/admin/veiculos');
-        const veiculosFormatados = response.data.map((v, index) => {
-          const L = parseFloat(v.comprimento);
-          const W = parseFloat(v.largura);
-          const H = parseFloat(v.altura);
-          const vol = L * W * H;
-
-          let type = 'truck';
-          if (L < 4) type = 'small';
-          else if (L < 5) type = 'van';
-          else if (L > 10) type = 'semi';
-
-          return {
-            id: v.id || `v_${index}`,
-            name: v.nome || v.name || `Veículo ${index + 1}`,
-            icon: v.icon || '🚛',
-            L, W, H, vol,
-            type: v.tipo || type,
-            original: v
-          };
-        });
-
-        setVeiculosBD(veiculosFormatados);
-        if (veiculosFormatados.length > 0) setSelVeh(veiculosFormatados[0].id);
-      } catch (error) {
-        console.error("Erro ao buscar veículos, usando fallback:", error);
-        setVeiculosBD(VEHICLES);
-        if (VEHICLES.length > 0) setSelVeh(VEHICLES[0].id);
-      } finally {
-        setCarregando(false);
-      }
-    };
-    fetchVeiculos();
+    setVeiculosBD(VEHICLES);
+    if (VEHICLES.length > 0) setSelVeh(VEHICLES[0].id);
+    setCarregando(false);
   }, []);
 
   useEffect(() => {
@@ -157,7 +126,6 @@ export default function MedidorCargas() {
     updateCam();
   };
 
-  // ─── THREEJS SETUP ───────────────
   useEffect(() => {
     if (tState.scene || !canvasRef.current || !wrapRef.current || carregando) return;
 
@@ -260,35 +228,22 @@ export default function MedidorCargas() {
     return hits.length ? hits[0] : null;
   };
 
-  // ─── 🛡️ LÓGICA DE COLISÃO AABB ───────────────
   const checkCollision = (mesh, newX, newY, newZ) => {
-    // Cria a caixa invisível
     const boxA = new THREE.Box3().setFromObject(mesh);
-    
-    // Calcula para onde ela vai
     const dx = newX - mesh.position.x;
     const dy = newY - mesh.position.y;
     const dz = newZ - mesh.position.z;
-
-    // Move a caixa invisível
     boxA.translate(new THREE.Vector3(dx, dy, dz));
-    
-    // Contrai a caixa 1 milímetro para não engatar borda com borda
     boxA.expandByScalar(-0.001); 
-
-    // Checa contra todas as outras caixas
     for (let i = 0; i < tState.cargoGrp.children.length; i++) {
       const other = tState.cargoGrp.children[i];
       if (other.isMesh && other.userData.movable && other.uuid !== mesh.uuid) {
         const boxB = new THREE.Box3().setFromObject(other);
         boxB.expandByScalar(-0.001); 
-        
-        if (boxA.intersectsBox(boxB)) {
-          return true; // Colisão detectada!
-        }
+        if (boxA.intersectsBox(boxB)) return true;
       }
     }
-    return false; // Caminho livre
+    return false;
   };
 
   const onMD = (e) => {
@@ -314,7 +269,6 @@ export default function MedidorCargas() {
     }
   };
 
-  // ─── 🔄 MOVIMENTO DO MOUSE ATUALIZADO ───────────────
   const onMM = (e) => {
     const dx = e.clientX - tState.lastMX;
     const dy = e.clientY - tState.lastMY;
@@ -331,7 +285,6 @@ export default function MedidorCargas() {
         const proposedX = pt.x - tState.dragOff.x; 
         const proposedZ = pt.z - tState.dragOff.z;
         
-        // Limites das paredes do caminhão
         const hw = v.L / 2, hd = v.W / 2;
         const chl = tState.dragObj.geometry.parameters.width / 2;
         const chd = tState.dragObj.geometry.parameters.depth / 2;
@@ -342,15 +295,8 @@ export default function MedidorCargas() {
         let finalX = tState.dragObj.position.x;
         let finalZ = tState.dragObj.position.z;
 
-        // Tenta mover no eixo X
-        if (!checkCollision(tState.dragObj, clampedX, tState.dragObj.position.y, finalZ)) {
-          finalX = clampedX;
-        }
-
-        // Tenta mover no eixo Z
-        if (!checkCollision(tState.dragObj, finalX, tState.dragObj.position.y, clampedZ)) {
-          finalZ = clampedZ;
-        }
+        if (!checkCollision(tState.dragObj, clampedX, tState.dragObj.position.y, finalZ)) finalX = clampedX;
+        if (!checkCollision(tState.dragObj, finalX, tState.dragObj.position.y, clampedZ)) finalZ = clampedZ;
 
         tState.dragObj.position.x = finalX;
         tState.dragObj.position.z = finalZ;
@@ -450,15 +396,11 @@ export default function MedidorCargas() {
     if (selCid === id) setSelCid(null);
   };
   
-const handleSelectVeh = (id) => {
+  // 2. CORREÇÃO DE BUG: Limpa as posições sobrepostas ao trocar de veículo
+  const handleSelectVeh = (id) => {
     setSelVeh(id);
-    
-    // 🧹 Limpa todas as posições salvas ao trocar de veículo
     tState.posOv = {}; 
-    
-    // 🧹 Limpa também a carga selecionada para não bugar os painéis
-    setSelCid(null); 
-    
+    setSelCid(null);
     resetCam();
   };
   
@@ -471,7 +413,7 @@ const handleSelectVeh = (id) => {
     const mesh = getSelMesh(cid);
     if (!mesh) return;
     
-    const gc = require('../../components/CargoForm/constants').getGC(v.type);
+    const gc = getGC(v.type);
     const hw = v.L / 2, hd = v.W / 2;
     const chl = mesh.geometry.parameters.width / 2;
     const chv = mesh.geometry.parameters.height / 2;
@@ -482,6 +424,37 @@ const handleSelectVeh = (id) => {
     const newZ = Math.max(-hd + chd, Math.min(hd - chd, pz));
 
     mesh.position.set(newX, newY, newZ);
+    syncEdges(mesh);
+
+    const key = mesh.userData.posKey;
+    if (key) tState.posOv[key] = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+    updateSelBar(mesh);
+    syncPanel(mesh);
+  };
+
+  // 3. NOVA FUNÇÃO: Botão para subir/descer cargas no Double Deck
+  const alternarAndar = (cid) => {
+    const v = veiculosBD.find(x => x.id === tState.selVeh);
+    if (!v || v.type !== 'ddeck') return;
+    
+    const mesh = getSelMesh(cid);
+    if (!mesh) return;
+
+    const gc = getGC(v.type);
+    // Altura onde começa o 2º andar (mesma lógica usada no engine3D)
+    const secondFloorY = gc + (v.H * 0.475) + 0.08; 
+    const chv = mesh.geometry.parameters.height / 2;
+
+    let newY;
+    // Se estiver do meio pra cima, manda para o chão (1º andar)
+    if (mesh.position.y >= secondFloorY) {
+      newY = gc + chv;
+    } else {
+      // Se estiver no chão, manda pro 2º andar
+      newY = secondFloorY + chv;
+    }
+
+    mesh.position.y = newY;
     syncEdges(mesh);
 
     const key = mesh.userData.posKey;
@@ -516,13 +489,13 @@ const handleSelectVeh = (id) => {
         <div className="medidor-loading-content">
           <div className="medidor-spinner"></div>
           <h2 className="medidor-loading-title">Inicializando Motor 3D</h2>
-          <p className="medidor-loading-text">Carregando frota de veículos e modelos físicos...</p>
+          <p className="medidor-loading-text">Carregando modelos físicos...</p>
         </div>
       </div>
     );
   }
 
-  if (!veiculosBD || veiculosBD.length === 0) return <div style={{ color: 'var(--text)', padding: 20 }}>Nenhum veículo cadastrado no sistema.</div>;
+  if (!veiculosBD || veiculosBD.length === 0) return <div style={{ color: 'var(--text)', padding: 20 }}>Nenhum veículo configurado no sistema.</div>;
 
   const actVeh = veiculosBD.find(x => x.id === selVeh);
   const vVol = totalVol();
@@ -613,6 +586,14 @@ const handleSelectVeh = (id) => {
                           <div className="pp-btns">
                             <div className="pp-btn ok" onClick={() => applyPos(c.id)}>✓ Aplicar</div>
                             <div className="pp-btn" onClick={() => resetPos(c.id)}>↺ Resetar</div>
+                            
+                            {/* BOTÃO DO DOUBLE DECK SÓ APARECE SE FOR ESSE VEÍCULO */}
+                            {actVeh && actVeh.type === 'ddeck' && (
+                              <div className="pp-btn" style={{ gridColumn: 'span 2', borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--acD)' }} onClick={() => alternarAndar(c.id)}>
+                                ↕ Mudar Andar (Cima/Baixo)
+                              </div>
+                            )}
+
                           </div>
                         </div>
                       </div>

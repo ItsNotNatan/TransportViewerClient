@@ -3,7 +3,15 @@ import { GAP, getGC } from '../../components/CargoForm/constants';
 
 export const buildVehicle = (v, tState, THREE) => {
   const mp = (col, shi, spec) => new THREE.MeshPhongMaterial({ color: col, shininess: shi || 60, specular: new THREE.Color(spec || 0x222222) });
-  const mpT = (col, op, shi) => new THREE.MeshPhongMaterial({ color: col, transparent: true, opacity: op || 0.12, side: THREE.DoubleSide, shininess: shi || 140, specular: new THREE.Color(0.7, 0.85, 1) });
+const mpT = (col, op, shi) => new THREE.MeshPhongMaterial({ 
+    color: col, 
+    transparent: true, 
+    opacity: op || 0.12, 
+    side: THREE.DoubleSide, 
+    depthWrite: false, // 👈 ADICIONAR ESTA LINHA
+    shininess: shi || 140, 
+    specular: new THREE.Color(0.7, 0.85, 1) 
+  });
   
   const mk = (geo, mat, x, y, z) => {
     const m = new THREE.Mesh(geo, mat);
@@ -169,7 +177,7 @@ export const buildVehicle = (v, tState, THREE) => {
   }
 
   if (type === 'sider') {
-    const curtM = new THREE.MeshPhongMaterial({ color: 0x1133aa, transparent: true, opacity: 0.08, side: THREE.DoubleSide });
+const curtM = new THREE.MeshPhongMaterial({ color: 0x1133aa, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }); // 👈 Add depthWrite: false
     mk(B(L + 0.04, 0.065, 0.065), mChr, 0, GC + H + 0.065, W / 2 + 0.03);
     mk(B(L + 0.04, 0.065, 0.065), mChr, 0, GC + H + 0.065, -W / 2 - 0.03);
     mk(B(L + 0.04, 0.04, 0.04), mMetal, 0, GC, W / 2 + 0.03);
@@ -215,9 +223,10 @@ export const placeCargos = (v, cargos, tState, selCid, THREE) => {
         specular: new THREE.Color(0.15, 0.15, 0.15),
         emissive: (selCid === c.id) ? new THREE.Color(0, 0.05, 0.12) : (inBay ? new THREE.Color(0, 0, 0) : new THREE.Color(0.22, 0, 0))
       });
-      const mesh = new THREE.Mesh(geo, mat);
+    const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(cx, cy, cz);
       mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.frustumCulled = false; // 👈 1. ADICIONAR AQUI
       mesh.userData = { movable: true, cid: c.id, label: c.label, unitIdx: c.unitIdx, posKey: posKey, inBay: inBay };
       tState.cargoGrp.add(mesh);
 
@@ -225,6 +234,7 @@ export const placeCargos = (v, cargos, tState, selCid, THREE) => {
       const eMat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: inBay ? 0.95 : 0.35 });
       const lines = new THREE.LineSegments(edges, eMat);
       lines.position.copy(mesh.position);
+      lines.frustumCulled = false; // 👈 2. ADICIONAR AQUI
       lines.userData = { linkedTo: mesh.uuid };
       tState.cargoGrp.add(lines);
 
@@ -235,6 +245,7 @@ export const placeCargos = (v, cargos, tState, selCid, THREE) => {
       const tFace = new THREE.Mesh(tGeo, tMat);
       tFace.rotation.x = -Math.PI / 2;
       tFace.position.set(cx, cy + CH / 2 + 0.003, cz);
+      tFace.frustumCulled = false; // 👈 3. ADICIONAR AQUI
       tFace.userData = { topOf: mesh.uuid };
       tState.cargoGrp.add(tFace);
 
@@ -244,6 +255,7 @@ export const placeCargos = (v, cargos, tState, selCid, THREE) => {
       const fMat = new THREE.MeshBasicMaterial({ color: frontCol, transparent: true, opacity: inBay ? 0.12 : 0.04, side: THREE.DoubleSide });
       const fFace = new THREE.Mesh(fGeo, fMat);
       fFace.position.set(cx, cy, cz + CW / 2 + 0.003);
+      fFace.frustumCulled = false; // 👈 4. ADICIONAR AQUI
       tState.cargoGrp.add(fFace);
 
       rowD = Math.max(rowD, CL);
