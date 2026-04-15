@@ -26,7 +26,7 @@
   flex-direction: column; 
   /* 👇 AJUSTE AQUI: Desconta o tamanho do menu e empurra para baixo */
   height: calc(100vh - 70px);
-  margin-top: 70px;
+  margin-top: 0px;
   width: 100%;
   overflow: hidden;
   background: var(--bg);

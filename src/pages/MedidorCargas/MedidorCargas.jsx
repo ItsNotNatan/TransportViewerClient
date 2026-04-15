@@ -517,7 +517,6 @@ export default function MedidorCargas() {
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center' }} title="Voltar">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <span>CARGO<em>FIT</em> <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 600, letterSpacing: '1px', marginLeft: '3px' }}>3D</span></span>
         </div>
         <div className="hrtags">
           <span className="tag tag-b">VISUALIZAÇÃO 3D</span>
