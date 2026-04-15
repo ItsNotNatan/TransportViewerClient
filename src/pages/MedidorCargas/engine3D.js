@@ -1,5 +1,5 @@
 // src/pages/MedidorCargas/engine3D.js
-import { GAP, getGC } from './constants';
+import { GAP, getGC } from '../../components/CargoForm/constants';
 
 export const buildVehicle = (v, tState, THREE) => {
   const mp = (col, shi, spec) => new THREE.MeshPhongMaterial({ color: col, shininess: shi || 60, specular: new THREE.Color(spec || 0x222222) });
@@ -67,17 +67,17 @@ export const buildVehicle = (v, tState, THREE) => {
   mk(B(L + 0.2, 0.15, W * 0.52), mChass, -0.05, GC * 0.35, 0);
   [-L / 3, 0, L / 3].forEach(px => { mk(B(0.12, 0.12, W * 0.52), mChass, px, GC * 0.28, 0); });
 
-  // WHEELS
+  // WHEELS (Corrigido para alinhamento correto)
   const WR = { small: 0.27, van: 0.31, truck: 0.43, semi: 0.52, sider: 0.52, ddeck: 0.52 }[type] || 0.43;
   const WT = WR * 0.55, WY = WR;
   const addW = (x, y, z) => {
-    const tc = new THREE.Mesh(Cy(WR, WT, 24), mWheel); tc.rotation.z = Math.PI / 2; tc.position.set(x, y, z); tc.castShadow = true; tState.vehGrp.add(tc);
-    const sw = new THREE.Mesh(Cy(WR * 0.96, WT + 0.005, 24), mRub); sw.rotation.z = Math.PI / 2; sw.position.set(x, y, z); tState.vehGrp.add(sw);
-    const rd = new THREE.Mesh(Cy(WR * 0.62, WT * 0.45, 10), mRim); rd.rotation.z = Math.PI / 2; rd.position.set(x, y, z); tState.vehGrp.add(rd);
+    const tc = new THREE.Mesh(Cy(WR, WT, 24), mWheel); tc.rotation.x = Math.PI / 2; tc.position.set(x, y, z); tc.castShadow = true; tState.vehGrp.add(tc);
+    const sw = new THREE.Mesh(Cy(WR * 0.96, WT + 0.005, 24), mRub); sw.rotation.x = Math.PI / 2; sw.position.set(x, y, z); tState.vehGrp.add(sw);
+    const rd = new THREE.Mesh(Cy(WR * 0.62, WT * 0.45, 10), mRim); rd.rotation.x = Math.PI / 2; rd.position.set(x, y, z); tState.vehGrp.add(rd);
     for (let si = 0; si < 5; si++) {
       const a = si * (Math.PI * 2 / 5);
-      const sp = new THREE.Mesh(B(WT * 0.38, WR * 0.09, WR * 0.44), mChr);
-      sp.rotation.z = Math.PI / 2 + a; sp.position.set(x, y + Math.sin(a) * WR * 0.34, z + Math.cos(a) * WR * 0.34); tState.vehGrp.add(sp);
+      const sp = new THREE.Mesh(B(WR * 0.44, WR * 0.09, WT * 0.38), mChr);
+      sp.rotation.z = a; sp.position.set(x + Math.cos(a) * WR * 0.34, y + Math.sin(a) * WR * 0.34, z); tState.vehGrp.add(sp);
     }
     const hb = new THREE.Mesh(new THREE.SphereGeometry(WR * 0.17, 8, 6), mChr); hb.position.set(x, y, z); tState.vehGrp.add(hb);
   };
