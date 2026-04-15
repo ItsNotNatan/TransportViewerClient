@@ -450,8 +450,15 @@ export default function MedidorCargas() {
     if (selCid === id) setSelCid(null);
   };
   
-  const handleSelectVeh = (id) => {
+const handleSelectVeh = (id) => {
     setSelVeh(id);
+    
+    // 🧹 Limpa todas as posições salvas ao trocar de veículo
+    tState.posOv = {}; 
+    
+    // 🧹 Limpa também a carga selecionada para não bugar os painéis
+    setSelCid(null); 
+    
     resetCam();
   };
   
