@@ -1,0 +1,96 @@
+/* =========================================
+   ESTILOS GERAIS DO CLIENTE
+   ========================================= */
+.text-primary { color: #3b82f6; } 
+.text-success { color: #16a34a; }
+.text-muted { color: #6b7280; } 
+.font-bold { font-weight: 700; } 
+.text-center { text-align: center; } 
+
+.fade-in { animation: slideDown 0.3s ease-out forwards; }
+@keyframes slideDown { 
+  from { opacity: 0; transform: translateY(-0.5rem); } 
+  to { opacity: 1; transform: translateY(0); } 
+}
+
+.section-dashboard { 
+  padding: 1rem;       /* Reduzi o padding vertical para subir o conteúdo */
+  width: 100%; 
+  max-width: 100%;      /* Ocupa quase 100% da tela */
+  margin: 0 auto;      /* Centraliza perfeitamente no meio da tela */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.section-header { display: flex; justify-content: center; align-items: center; width: 100%; }
+.section-title { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; margin: 0; color: #1f2937; }
+
+/* O container agora vai esticar junto com a section */
+.table-container { background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; overflow: hidden; width: 100%; }
+.data-table { width: 100%; text-align: left; border-collapse: collapse; }
+.data-table thead tr { background-color: #f9fafb; color: #4b5563; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; }
+.data-table th, .data-table td { padding: 1rem; color: #1f2937; }
+.data-table tbody tr { border-bottom: 1px solid #f3f4f6; font-size: 0.875rem; transition: background-color 0.2s; }
+.data-table tbody tr:hover { background-color: #eff6ff; }
+
+/* =========================================
+   BADGES E BOTÕES
+   ========================================= */
+.badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
+.badge-success { background-color: #dcfce7; color: #166534; } 
+.badge-info { background-color: #dbeafe; color: #1e40af; } 
+.badge-warning { background-color: #fef9c3; color: #854d0e; } 
+.badge-default { background-color: #f3f4f6; color: #1f2937; } 
+
+.btn-action { color: #2563eb; background-color: #eff6ff; padding: 0.4rem 0.75rem; border-radius: 0.25rem; font-size: 0.875rem; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; transition: background-color 0.2s; font-family: inherit; }
+.btn-action:hover { background-color: #dbeafe; }
+.btn-secondary { background-color: transparent; color: #374151; border: 1px solid #d1d5db; padding: 0.625rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit;}
+.btn-secondary:hover { background-color: #f3f4f6; }
+
+/* =========================================
+   MODAL EXPANDIDO (Ficha Cadastral)
+   ========================================= */
+.modal-overlay {
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  width: 100vw; 
+  height: 100vh; 
+  background-color: rgba(17, 24, 39, 0.7);
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  z-index: 99999;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white; border-radius: 0.75rem; width: 100%; max-width: 850px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-start; background-color: #f9fafb; }
+.modal-subtitle { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+.modal-title { font-size: 1.5rem; font-weight: 800; color: #111827; margin-top: 0.25rem; }
+
+.btn-close { background: none; border: none; color: #9ca3af; cursor: pointer; transition: color 0.2s; }
+.btn-close:hover { color: #ef4444; }
+
+.modal-body { padding: 2rem; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+
+.modal-section h4 { font-size: 1.1rem; color: #1f2937; margin-bottom: 1.25rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; font-weight: 700; }
+.modal-section ul { list-style: none; padding: 0; margin: 0; }
+.modal-section li { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.875rem; font-size: 0.95rem; }
+.modal-section li span { color: #6b7280; min-width: 120px; }
+.modal-section li strong { color: #111827; text-align: right; max-width: 65%; word-wrap: break-word; }
+
+.modal-footer { padding: 1.25rem 2rem; background-color: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 1rem; }
