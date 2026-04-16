@@ -676,9 +676,7 @@ export default function MedidorCargas() {
         </div>
       </div>
 
-      {showRelatorio && (
-        <ModalRelatorio veiculo={actVeh} cargas={cargos} ocupacao={vPct} onClose={() => setShowRelatorio(false)} />
-      )}
+
     </div>
   );
 }
