@@ -3,10 +3,10 @@ import React, { useState, useEffect, useMemo } from "react";
 import Select from "react-select";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, PieChart, Pie, Legend
+  ResponsiveContainer, Cell, PieChart, Pie, Legend, ComposedChart // 👈 ComposedChart adicionado aqui
 } from "recharts";
 import api from "../../services/api";
-import "./AcompFinan.css"; // 👈 IMPORT DO CSS ADICIONADO AQUI
+import "./AcompFinan.css";
 
 // ─── COLORS (Mantidas no JS para os gráficos do Recharts) ───────────────────
 const BLUE_MAIN   = "#0057A8";
@@ -26,6 +26,33 @@ const fmt = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency:
 const fmtK = (v) => (v || 0) >= 1000000 ? `R$ ${(v / 1000000).toFixed(2)}M` : (v || 0) >= 1000 ? `R$ ${(v / 1000).toFixed(0)}K` : fmt(v);
 
 const mesesAbrev = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+// ─── DADOS MOCKADOS PARA "PREVISTO VS REALIZADO" (Baseado nas suas imagens) ──
+const dadosMensaisPR = [
+  { mes: 'Jan', previsto: 595, realizado: 550, dif: -45, difPerc: -7.6 },
+  { mes: 'Fev', previsto: 260, realizado: 273, dif: 13, difPerc: 5.0 },
+  { mes: 'Mar', previsto: 270, realizado: 250, dif: -19, difPerc: -7.1 },
+  { mes: 'Abr', previsto: 481, realizado: 414, dif: -66, difPerc: -13.9 },
+  { mes: 'Mai', previsto: 210, realizado: 207, dif: -2, difPerc: -1.3 },
+  { mes: 'Jun', previsto: 333, realizado: 361, dif: 28, difPerc: 8.5 },
+  { mes: 'Jul', previsto: 325, realizado: 326, dif: 1, difPerc: 0.5 },
+  { mes: 'Ago', previsto: 280, realizado: 279, dif: -1, difPerc: -0.4 },
+  { mes: 'Set', previsto: 271, realizado: 253, dif: -18, difPerc: -6.9 },
+  { mes: 'Out', previsto: 407, realizado: 386, dif: -20, difPerc: -5.1 },
+  { mes: 'Nov', previsto: 430, realizado: 480, dif: 50, difPerc: 11.7 },
+  { mes: 'Dez', previsto: 566, realizado: 480, dif: -86, difPerc: -15.3 },
+];
+
+const dadosDivergencias = [
+  { motivo: 'Frete emergencial / urgente', ocorrencias: 47, impacto: 313, desvio: 28.5, cor: '#ef4444' },
+  { motivo: 'Mudança de modal', ocorrencias: 15, impacto: 199, desvio: 18.1, cor: '#ef4444' },
+  { motivo: 'Reentrega por endereço incorreto', ocorrencias: 33, impacto: 185, desvio: 16.9, cor: '#f59e0b' },
+  { motivo: 'Taxa de pedágio não prevista', ocorrencias: 28, impacto: 143, desvio: 13.0, cor: '#f59e0b' },
+  { motivo: 'Atraso na coleta / diária extra', ocorrencias: 22, impacto: 88, desvio: 8.0, cor: '#3b82f6' },
+  { motivo: 'Carga fracionada não consolidada', ocorrencias: 19, impacto: 76, desvio: 7.0, cor: '#3b82f6' },
+  { motivo: 'Excesso de peso / cubagem', ocorrencias: 12, impacto: 55, desvio: 5.0, cor: '#3b82f6' },
+  { motivo: 'Seguro adicional não orçado', ocorrencias: 8, impacto: 38, desvio: 3.5, cor: '#3b82f6' },
+];
 
 // ─── ICONS ──────────────────────────────────────────────────────────────────
 const DollarSign = ({ size = 24, color = "currentColor" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>;
@@ -177,6 +204,7 @@ export default function AcompFinan() {
 
   const tabs = [
     { id: "overview",  label: "📊 Visão Geral" },
+    { id: "previsto",  label: "🎯 Previsto vs Realizado" }, // 👈 ABA ADICIONADA
     { id: "temporal",  label: "📈 Evolução Temporal" },
     { id: "rotas",     label: "🗺️ Rotas" },
     { id: "carriers",  label: "🚛 Transportadoras" },
@@ -288,6 +316,116 @@ export default function AcompFinan() {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* ══════════════ PREVISTO VS REALIZADO (NOVA ABA) ══════════════ */}
+            {activeTab === "previsto" && (
+              <div className="acomp-flex-col">
+                
+                {/* Cards Superiores */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+                  <div className="acomp-card" style={{ padding: '20px' }}>
+                    <p style={{ color: GRAY_MED, fontSize: '12px', fontWeight: 'bold' }}>📋 TOTAL PREVISTO</p>
+                    <h2 style={{ color: BLUE_MAIN, fontSize: '28px', margin: '5px 0' }}>R$ 4.43M</h2>
+                    <p style={{ color: GRAY_MED, fontSize: '12px' }}>Orçamento 2025</p>
+                  </div>
+                  <div className="acomp-card" style={{ padding: '20px' }}>
+                    <p style={{ color: GRAY_MED, fontSize: '12px', fontWeight: 'bold' }}>💰 TOTAL REALIZADO</p>
+                    <h2 style={{ color: BLUE_MAIN, fontSize: '28px', margin: '5px 0' }}>R$ 4.26M</h2>
+                    <p style={{ color: GRAY_MED, fontSize: '12px' }}>Gasto efetivo 2025</p>
+                  </div>
+                  <div className="acomp-card" style={{ padding: '20px' }}>
+                    <p style={{ color: GRAY_MED, fontSize: '12px', fontWeight: 'bold' }}>✅ DIFERENÇA TOTAL</p>
+                    <h2 style={{ color: SUCCESS, fontSize: '28px', margin: '5px 0' }}>R$ 168K</h2>
+                    <p style={{ color: GRAY_MED, fontSize: '12px' }}>Abaixo do previsto (-3.8%)</p>
+                  </div>
+                  <div className="acomp-card" style={{ padding: '20px' }}>
+                    <p style={{ color: GRAY_MED, fontSize: '12px', fontWeight: 'bold' }}>📊 MESES ACIMA DO PREVISTO</p>
+                    <h2 style={{ color: WARNING, fontSize: '28px', margin: '5px 0' }}>4</h2>
+                    <p style={{ color: GRAY_MED, fontSize: '12px' }}>de 12 meses</p>
+                  </div>
+                </div>
+
+                {/* Gráfico Comparativo Mensal */}
+                <div className="acomp-card">
+                  <SectionHeader title="Comparativo Mensal — Previsto vs Realizado" subtitle="Evolução do orçamento versus gasto efetivo ao longo do ano" />
+                  <div style={{ width: '100%', height: 350 }}>
+                    <ResponsiveContainer>
+                      <ComposedChart data={dadosMensaisPR} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={BLUE_PALE} />
+                        <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: GRAY_MED }} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `R$${val}K`} tick={{ fontSize: 11, fill: GRAY_MED }} />
+                        <Tooltip formatter={(value) => `R$ ${value}K`} />
+                        <Legend verticalAlign="bottom" height={36}/>
+                        <Bar dataKey="previsto" name="Previsto" barSize={30} fill="#e0f2fe" stroke="#38bdf8" radius={[4, 4, 0, 0]} />
+                        <Line type="monotone" dataKey="realizado" name="Realizado" stroke={ACCENT} strokeWidth={3} dot={{ r: 5, fill: ACCENT }} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Tabela de Detalhamento Mensal */}
+                <div className="acomp-card">
+                  <SectionHeader title="Detalhamento Mensal" subtitle="Diferença entre valor previsto e realizado por mês" />
+                  <table className="acomp-table">
+                    <thead>
+                      <tr>
+                        <th className="left">Mês</th>
+                        <th className="left">Previsto</th>
+                        <th className="left">Realizado</th>
+                        <th className="left">Diferença (R$)</th>
+                        <th className="left">Diferença (%)</th>
+                        <th className="center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dadosMensaisPR.map((row, idx) => (
+                        <tr key={idx} className={idx % 2 === 0 ? "row-even" : "row-odd"}>
+                          <td className="fw-700">{row.mes}</td>
+                          <td>R$ {row.previsto}K</td>
+                          <td>R$ {row.realizado}K</td>
+                          <td className="fw-700" style={{ color: row.dif > 0 ? '#ef4444' : '#16a34a' }}>
+                            {row.dif > 0 ? '+' : ''}R$ {Math.abs(row.dif)}K
+                          </td>
+                          <td style={{ color: row.difPerc > 0 ? '#ef4444' : '#16a34a' }}>
+                            {row.difPerc > 0 ? '+' : ''}{row.difPerc}%
+                          </td>
+                          <td className="center">
+                            <span style={{ 
+                              padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold',
+                              background: row.dif > 0 ? '#fee2e2' : '#dcfce7',
+                              color: row.dif > 0 ? '#b91c1c' : '#15803d'
+                            }}>
+                              {row.dif > 0 ? 'Acima' : 'Dentro'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Gráfico Horizontal de Impacto */}
+                <div className="acomp-card">
+                  <SectionHeader title="Impacto por Motivo de Divergência" subtitle="Distribuição do impacto financeiro por causa identificada" />
+                  <div style={{ width: '100%', height: 350 }}>
+                    <ResponsiveContainer>
+                      <BarChart layout="vertical" data={dadosDivergencias} margin={{ top: 20, right: 30, left: 180, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={BLUE_PALE} />
+                        <XAxis type="number" tickFormatter={(val) => `R$${val}K`} tick={{ fontSize: 11, fill: GRAY_MED }} />
+                        <YAxis dataKey="motivo" type="category" width={200} tick={{ fontSize: 11, fill: GRAY_DARK }} />
+                        <Tooltip formatter={(value) => `R$ ${value}K`} />
+                        <Bar dataKey="impacto" radius={[0, 4, 4, 0]}>
+                          {dadosDivergencias.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.cor} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+              </div>
             )}
 
             {/* ══════════════ TEMPORAL ══════════════ */}
